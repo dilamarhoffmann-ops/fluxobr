@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Root Variables for Light Theme */
+:root {
+  --color-bg-primary: 248 250 252; /* slate-50 */
+  --color-bg-secondary: 255 255 255; /* white */
+  --color-bg-tertiary: 241 245 249; /* slate-100 */
+  
+  --color-text-primary: 15 23 42; /* slate-900 */
+  --color-text-secondary: 51 65 85; /* slate-700 */
+  --color-text-tertiary: 100 116 139; /* slate-500 */
+  
+  --color-border-primary: 226 232 240; /* slate-200 */
+  --color-border-secondary: 241 245 249; /* slate-100 */
+  
+  --color-accent: 59 130 246; /* blue-500 */
+  --color-accent-hover: 37 99 235; /* blue-600 */
+}
+
+/* Dark Theme Variables */
+.dark {
+  --color-bg-primary: 15 23 42; /* slate-900 */
+  --color-bg-secondary: 30 41 59; /* slate-800 */
+  --color-bg-tertiary: 51 65 85; /* slate-700 */
+  
+  --color-text-primary: 248 250 252; /* slate-50 */
+  --color-text-secondary: 226 232 240; /* slate-200 */
+  --color-text-tertiary: 148 163 184; /* slate-400 */
+  
+  --color-border-primary: 51 65 85; /* slate-700 */
+  --color-border-secondary: 71 85 105; /* slate-600 */
+  
+  --color-accent: 59 130 246; /* blue-500 */
+  --color-accent-hover: 96 165 250; /* blue-400 */
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgb(var(--color-bg-tertiary));
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-border-primary));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--color-text-tertiary));
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: rgb(var(--color-bg-secondary));
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-border-secondary));
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--color-text-tertiary));
+}
+
+/* Smooth transitions for theme changes */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Preserve specific transitions */
+button, a, [role="button"] {
+  transition-property: all;
+}
+
+/* Animation utilities */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+/* Font utilities */
+.font-heading {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid rgb(var(--color-accent));
+  outline-offset: 2px;
+}
