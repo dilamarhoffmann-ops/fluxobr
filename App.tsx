@@ -1,8 +1,7 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { INITIAL_TASKS, COLLABORATORS, COMPANIES, INITIAL_TEAMS, INITIAL_FAQS } from './constants';
 import { Task, TaskInput, TaskStatus, Company, Collaborator, FAQItem } from './types';
-import { LayoutDashboard, CheckSquare, Settings as SettingsIcon, Bell, Menu, Building2, HelpCircle, LogOut } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Settings as SettingsIcon, Bell, Menu, Building2, HelpCircle, LogOut, Calendar } from 'lucide-react';
 import { MetricsRow } from './components/MetricsCards';
 import { DashboardCharts } from './components/DashboardCharts';
 import { TaskManagement } from './components/TaskManagement';
@@ -11,10 +10,14 @@ import { CreateTaskModal } from './components/CreateTaskModal';
 import { CompanyList } from './components/CompanyList';
 import { DeleteConfirmModal } from './components/DeleteConfirmModal';
 import { FAQManager } from './components/FAQManager';
-import { Login } from './components/Login';
+import { SupabaseLogin } from './components/SupabaseLogin';
 import { SmartInsights } from './components/SmartInsights';
 import { MenuVertical } from './components/ui/menu-vertical';
 import { ThemeToggle } from './components/ThemeToggle';
+import { useAuth } from './hooks/useAuth';
+import { db } from './lib/supabase';
+import { TaskDetailsModal } from './components/TaskDetailsModal';
+import { AgendaView } from './components/AgendaView';
 
 enum Tab {
   DASHBOARD = 'dashboard',
@@ -22,29 +25,34 @@ enum Tab {
   COMPANIES = 'companies',
   SETTINGS = 'settings',
   FAQ = 'faq',
+  AGENDA = 'agenda',
 }
 
 const App: React.FC = () => {
-  // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
+  const { user: authUser, loading: authLoading, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>(Tab.DASHBOARD);
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-  const [companies, setCompanies] = useState<Company[]>(COMPANIES);
-  const [collaborators, setCollaborators] = useState<Collaborator[]>(COLLABORATORS);
-  const [teams, setTeams] = useState<string[]>(INITIAL_TEAMS);
-  const [faqs, setFaqs] = useState<FAQItem[]>(INITIAL_FAQS);
 
-  // Simulated Logged In User (Defaulting to the first one: Ana Silva)
-  const [currentUserId, setCurrentUserId] = useState<string>(COLLABORATORS[0].id);
-  const currentUser = collaborators.find(c => c.id === currentUserId) || collaborators[0];
+  // States
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [authorizedEmails, setAuthorizedEmails] = useState<any[]>([]);
+  const [teams, setTeams] = useState<string[]>([]);
+  const [faqs, setFaqs] = useState<FAQItem[]>([]);
+  const [taskTemplates, setTaskTemplates] = useState<any[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+
+  // Current User Profile (from DB)
+  const [currentUserProfile, setCurrentUserProfile] = useState<Collaborator | null>(null);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isManager, setIsManager] = useState(false);
+  const [isAdminMode, setIsAdminMode] = useState(false);
 
   // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [preselectedDate, setPreselectedDate] = useState<string | null>(null);
+  const [createModalMode, setCreateModalMode] = useState<'nova' | 'modelo' | 'lembrete'>('nova');
 
   // Delete Modal State
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
@@ -53,20 +61,225 @@ const App: React.FC = () => {
     id: string | null;
   }>({ isOpen: false, type: null, id: null });
 
-  // Derived State for Metrics and Display
-  const filteredTasks = useMemo(() => {
-    if (isManager) return tasks;
-    return tasks.filter(t => t.assigneeId === currentUserId);
-  }, [tasks, isManager, currentUserId]);
+  // Notifications State
+  const [notifications, setNotifications] = useState<Task[]>([]);
+  const [hasNewNotification, setHasNewNotification] = useState(false);
+
+  // Task Details Modal State
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
+
+  // Mapping Helpers
+  const mapTaskFromDB = (data: any): Task => ({
+    id: data.id,
+    title: data.title,
+    description: data.description,
+    status: data.status as TaskStatus,
+    priority: data.priority,
+    assigneeId: data.assignee_id,
+    companyId: data.company_id,
+    dueDate: data.due_date,
+    createdAt: data.created_at,
+    startedAt: data.started_at,
+    completedAt: data.completed_at,
+    faqId: data.faq_id,
+    reminder: data.reminder,
+    checklist: data.checklist || [],
+    repeatFrequency: data.repeat_frequency || 'none',
+    creatorId: data.creator_id,
+  });
+
+  const mapCompanyFromDB = (data: any): Company => {
+    let teams: string[] = [];
+
+    const processValue = (val: any) => {
+      if (!val) return;
+      if (Array.isArray(val)) {
+        val.forEach(item => processValue(item));
+      } else if (typeof val === 'string') {
+        const trimmed = val.trim();
+        if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+          try {
+            const parsed = JSON.parse(trimmed);
+            processValue(parsed);
+          } catch {
+            teams.push(trimmed);
+          }
+        } else if (trimmed) {
+          teams.push(trimmed);
+        }
+      }
+    };
+
+    processValue(data.team);
+
+    return {
+      id: data.id,
+      name: data.name,
+      logo: data.logo || 'bg-blue-600',
+      team: Array.from(new Set(teams)),
+    };
+  };
+
+  const mapCollaboratorFromDB = (data: any): Collaborator => ({
+    id: data.id,
+    name: data.full_name || 'Usuário',
+    avatar: data.avatar_url || `https://picsum.photos/100/100?seed=${data.id}`,
+    role: data.role || 'Membro',
+    isManager: data.is_manager,
+    accessLevel: data.access_level || 'colaborador',
+  });
+
+  // Load Initial Data
+  useEffect(() => {
+    if (!authUser) return;
+
+    const loadData = async () => {
+      setDataLoading(true);
+      try {
+        // Load Profile
+        const { data: profileData } = await db.getById('profiles', authUser.id);
+        if (profileData) {
+          const profile = mapCollaboratorFromDB(profileData);
+          setCurrentUserProfile(profile);
+
+          // Admin Mode stays false by default as initialized in state.
+          // Users must enable it manually in Settings.
+        }
+
+        // Load Companies
+        const { data: companiesData } = await db.getAll('companies');
+        if (companiesData) setCompanies(companiesData.map(mapCompanyFromDB));
+
+        // Load Collaborators
+        const { data: collabsData } = await db.getAll('profiles');
+        if (collabsData) setCollaborators(collabsData.map(mapCollaboratorFromDB));
+
+        // Load Teams
+        const { data: teamsData } = await db.getAll('teams');
+        if (teamsData) {
+          setTeams(teamsData.map((t: any) => t.name));
+        }
+
+        // Load Authorized Emails
+        const { data: authEmailsData } = await db.getAll('authorized_emails');
+        if (authEmailsData) setAuthorizedEmails(authEmailsData);
+
+        // Load FAQs
+        const { data: faqsData } = await db.getAll('faqs');
+        if (faqsData) setFaqs(faqsData as FAQItem[]);
+
+        // Load Task Templates (Recursive approach simplified for now)
+        const { data: templatesData } = await db.getAll('task_templates');
+        if (templatesData) {
+          const fullTemplates = await Promise.all(templatesData.map(async (tmpl: any) => {
+            const { data: tasksData } = await db.from('template_tasks').select('*').eq('template_id', tmpl.id);
+            const tasksWithActivities = await Promise.all((tasksData || []).map(async (tk: any) => {
+              const { data: actsData } = await db.from('template_activities').select('*').eq('template_task_id', tk.id);
+              return { ...tk, activities: actsData || [] };
+            }));
+            return { ...tmpl, tasks: tasksWithActivities };
+          }));
+          setTaskTemplates(fullTemplates);
+        }
+
+        // Load Tasks
+        const { data: tasksData } = await db.getAll('tasks');
+        if (tasksData) setTasks(tasksData.map(mapTaskFromDB));
+
+      } catch (error) {
+        console.error('Error loading data:', error);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+
+    loadData();
+  }, [authUser]);
+
+  // Reminder Checker Logic
+  useEffect(() => {
+    if (!authUser) return;
+
+    const checkReminders = () => {
+      const now = new Date();
+
+      tasks.forEach(task => {
+        if (task.reminder && task.status !== TaskStatus.DONE) {
+          const reminderDate = new Date(task.reminder);
+          const diffInMinutes = (now.getTime() - reminderDate.getTime()) / (1000 * 60);
+
+          if (diffInMinutes >= 0 && diffInMinutes < 2) {
+            const alreadyNotified = notifications.some(n => n.id === task.id);
+            if (!alreadyNotified) {
+              setNotifications(prev => [task, ...prev]);
+              setHasNewNotification(true);
+              if (Notification.permission === 'granted') {
+                new Notification('Lembrete de Tarefa', {
+                  body: `Está na hora de: ${task.title}`,
+                  icon: '/favicon.ico'
+                });
+              }
+            }
+          }
+        }
+      });
+    };
+
+    const interval = setInterval(checkReminders, 30000);
+    return () => clearInterval(interval);
+  }, [tasks, notifications, authUser]);
 
   const filteredCompanies = useMemo(() => {
-    if (isManager) return companies;
-    // Show companies where user has tasks OR that match their team/role
-    return companies.filter(c =>
-      tasks.some(t => t.companyId === c.id && t.assigneeId === currentUserId) ||
-      c.team === currentUser.role
-    );
-  }, [companies, tasks, isManager, currentUserId, currentUser.role]);
+    if (!currentUserProfile) return [];
+
+    // ADMIN: Vê todas as empresas
+    if (currentUserProfile.accessLevel === 'admin') return companies;
+
+    // GESTOR ou COLABORADOR: Veem apenas empresas onde sua EQUIPE está vinculada
+    return companies.filter(c => {
+      if (!Array.isArray(c.team)) return false;
+      const userRoleLower = currentUserProfile.role.trim().toLowerCase();
+      return c.team.some(teamName => teamName.trim().toLowerCase() === userRoleLower);
+    });
+  }, [companies, currentUserProfile]);
+
+  const filteredTasks = useMemo(() => {
+    if (!currentUserProfile) return [];
+
+    const isGlobalAdmin = currentUserProfile.accessLevel === 'admin';
+    const userTeam = currentUserProfile.role.trim().toLowerCase();
+
+    // 1. ADMIN em MODO ADMIN: Vê absolutamente tudo
+    if (isGlobalAdmin && isAdminMode) {
+      return tasks;
+    }
+
+    // 2. Identificar quais empresas pertencem à equipe do usuário
+    const allowedCompanyIds = new Set(filteredCompanies.map(c => c.id));
+
+    // 3. Mapa de papéis/squads para busca rápida
+    const colabRoleMap = new Map(collaborators.map(c => [c.id, c.role.trim().toLowerCase()]));
+
+    return tasks.filter(t => {
+      // Regra 1: Empresa vinculada ao meu time
+      if (t.companyId && allowedCompanyIds.has(t.companyId)) return true;
+
+      // Regra 2: Sou o responsável ou o criador
+      if (t.assigneeId === currentUserProfile.id || t.creatorId === currentUserProfile.id) return true;
+
+      // Regra 3: Atribuído a alguém da minha equipe (mesmo squad)
+      if (t.assigneeId) {
+        const assigneeRole = colabRoleMap.get(t.assigneeId);
+        if (assigneeRole === userTeam) return true;
+      }
+
+      return false;
+    });
+  }, [tasks, isAdminMode, currentUserProfile, filteredCompanies, collaborators]);
+
+  const filteredCollaborators = useMemo(() => {
+    return collaborators;
+  }, [collaborators]);
 
   const metrics = useMemo(() => {
     const targetTasks = filteredTasks;
@@ -79,32 +292,113 @@ const App: React.FC = () => {
     return { totalTasks, completedTasks, blockedTasks, overdueTasks, completionRate };
   }, [filteredTasks]);
 
-  const handleUpdateStatus = (taskId: string, newStatus: TaskStatus) => {
-    setTasks(prev => prev.map(t => {
-      if (t.id !== taskId) return t;
+  const handleUpdateStatus = async (taskId: string, newStatus: TaskStatus) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
 
-      const updates: Partial<Task> = { status: newStatus };
-      const now = new Date().toISOString();
+    // Define se o usuário tem permissões de gestor baseado no perfil
+    const isManagerProfile = currentUserProfile?.accessLevel === 'admin' || currentUserProfile?.accessLevel === 'gestor';
 
-      // Track Start Time if moving to In Progress for the first time
-      if (newStatus === TaskStatus.IN_PROGRESS && !t.startedAt) {
-        updates.startedAt = now;
+    // Somente gestores podem mover para REVISÃO, CONCLUÍDO ou BLOQUEADO
+    if (!isManagerProfile && (newStatus === TaskStatus.DONE || newStatus === TaskStatus.BLOCKED || newStatus === TaskStatus.REVIEW)) {
+      alert('Apenas gestores podem marcar tarefas como "Em Revisão", "Concluído" ou "Bloqueado".');
+      return;
+    }
+
+    // Validação: só pode mover para IN_PROGRESS se tiver pelo menos uma atividade marcada
+    if (newStatus === TaskStatus.IN_PROGRESS && task.checklist && task.checklist.length > 0) {
+      const hasCompletedActivity = task.checklist.some(item => item.completed);
+      if (!hasCompletedActivity) {
+        alert('Você precisa marcar pelo menos uma atividade como concluída antes de mover para "Em Andamento".');
+        return;
       }
+    }
 
-      // Track Completion Time
-      if (newStatus === TaskStatus.DONE) {
-        updates.completedAt = now;
-      } else if (t.status === TaskStatus.DONE) {
-        // If moving out of done, clear completedAt
-        updates.completedAt = undefined;
-      }
+    const updates: any = { status: newStatus };
+    const now = new Date().toISOString();
 
-      return { ...t, ...updates };
-    }));
+    if (newStatus === TaskStatus.IN_PROGRESS && !task.startedAt) {
+      updates.started_at = now;
+    }
+
+    if (newStatus === TaskStatus.DONE) {
+      updates.completed_at = now;
+    } else if (task.status === TaskStatus.DONE) {
+      updates.completed_at = null;
+    }
+
+    const { error } = await db.update('tasks', taskId, updates);
+    if (!error) {
+      setTasks(prev => prev.map(t => t.id === taskId ? {
+        ...t,
+        status: newStatus,
+        startedAt: updates.started_at || t.startedAt,
+        completedAt: updates.completed_at === null ? undefined : (updates.completed_at || t.completedAt)
+      } : t));
+    }
   };
 
-  const handleOpenCreateModal = () => {
+  const handleToggleChecklistItem = async (taskId: string, index: number) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || !task.checklist) return;
+
+    const newChecklist = [...task.checklist];
+    newChecklist[index].completed = !newChecklist[index].completed;
+
+    // Verifica quantos itens estão completos
+    const completedCount = newChecklist.filter(item => item.completed).length;
+    const totalCount = newChecklist.length;
+
+    // Determina o novo status baseado no checklist
+    let newStatus = task.status;
+    const updates: any = { checklist: newChecklist };
+    const now = new Date().toISOString();
+
+    if (completedCount === totalCount && totalCount > 0) {
+      // Todos concluídos -> REVIEW (para o gestor validar)
+      newStatus = TaskStatus.REVIEW;
+      updates.status = newStatus;
+      updates.completed_at = null; // Só o gestor coloca a data de conclusão ao mudar para DONE
+    } else if (completedCount === 0) {
+      // Nenhum concluído -> PENDING
+      newStatus = TaskStatus.PENDING;
+      updates.status = newStatus;
+      updates.started_at = null;
+      updates.completed_at = null;
+    } else {
+      // Pelo menos um concluído (mas não todos) -> IN_PROGRESS
+      newStatus = TaskStatus.IN_PROGRESS;
+      updates.status = newStatus;
+      updates.completed_at = null;
+      if (!task.startedAt) updates.started_at = now;
+    }
+
+    const { error } = await db.update('tasks', taskId, updates);
+    if (!error) {
+      setTasks(prev => {
+        const updatedTasks = prev.map(t => t.id === taskId ? {
+          ...t,
+          checklist: newChecklist,
+          status: newStatus,
+          startedAt: updates.started_at || t.startedAt,
+          completedAt: updates.completed_at === null ? undefined : (updates.completed_at || t.completedAt)
+        } : t);
+
+        // Se a tarefa sendo visualizada é a mesma que foi atualizada, atualiza o modal
+        if (viewingTask?.id === taskId) {
+          const updatedTask = updatedTasks.find(t => t.id === taskId);
+          if (updatedTask) setViewingTask(updatedTask);
+        }
+
+        return updatedTasks;
+      });
+    }
+  };
+
+  const handleOpenCreateModal = (date?: string, mode: 'nova' | 'modelo' | 'lembrete' = 'nova') => {
     setEditingTask(null);
+    setPreselectedDate(date || null);
+    setCreateModalMode(mode);
     setIsCreateModalOpen(true);
   };
 
@@ -113,368 +407,558 @@ const App: React.FC = () => {
     setIsCreateModalOpen(true);
   };
 
-  const handleSaveTask = (taskInput: TaskInput, targetCompanyIds: string[]) => {
-    if (editingTask) {
-      // Edit Mode: Update existing task
-      setTasks(prev => prev.map(t =>
-        t.id === editingTask.id
-          ? { ...t, ...taskInput, companyId: targetCompanyIds[0] } // Update fields
-          : t
-      ));
+  const handleViewTask = (task: Task) => {
+    setViewingTask(task);
+  };
+
+  const handleSaveTask = async (taskInputOrArray: TaskInput | TaskInput[], targetCompanyIds: string[], replicateToAllMembers: boolean) => {
+    const taskInputs = Array.isArray(taskInputOrArray) ? taskInputOrArray : [taskInputOrArray];
+
+    if (editingTask && !Array.isArray(taskInputOrArray)) {
+      const taskInput = taskInputOrArray;
+      const dbTask = {
+        title: taskInput.title,
+        description: taskInput.description,
+        status: taskInput.status,
+        priority: taskInput.priority,
+        due_date: taskInput.dueDate,
+        assignee_id: taskInput.assigneeId,
+        company_id: targetCompanyIds[0],
+        faq_id: taskInput.faqId || null,
+        reminder: taskInput.reminder || null,
+        checklist: taskInput.checklist || [],
+        repeat_frequency: taskInput.repeatFrequency || 'none',
+      };
+
+      const { error } = await db.update('tasks', editingTask.id, dbTask);
+      if (!error) {
+        setTasks(prev => prev.map(t => t.id === editingTask.id ? { ...t, ...taskInput, companyId: targetCompanyIds[0] } : t));
+      }
     } else {
-      // Create Mode: Create new tasks (possibly replicating across companies)
-      const newTasks: Task[] = targetCompanyIds.map((companyId, index) => ({
-        ...taskInput,
-        companyId: companyId,
-        id: `t${Date.now()}-${index}`,
-        createdAt: new Date().toISOString().split('T')[0],
-        startedAt: taskInput.status === TaskStatus.IN_PROGRESS ? new Date().toISOString() : undefined
-      }));
-      setTasks(prev => [...newTasks, ...prev]);
+      const tasksToAdd: any[] = [];
+      const now = new Date().toISOString();
+
+      taskInputs.forEach(taskInput => {
+        targetCompanyIds.forEach((companyId) => {
+          if (replicateToAllMembers) {
+            filteredCollaborators.forEach((collab) => {
+              tasksToAdd.push({
+                title: taskInput.title,
+                description: taskInput.description,
+                status: taskInput.status,
+                priority: taskInput.priority,
+                due_date: taskInput.dueDate,
+                assignee_id: collab.id,
+                company_id: companyId,
+                creator_id: authUser?.id,
+                faq_id: taskInput.faqId || null,
+                reminder: taskInput.reminder || null,
+                checklist: taskInput.checklist || [],
+                repeat_frequency: taskInput.repeatFrequency || 'none',
+                started_at: taskInput.status === TaskStatus.IN_PROGRESS ? now : null
+              });
+            });
+          } else {
+            tasksToAdd.push({
+              title: taskInput.title,
+              description: taskInput.description,
+              status: taskInput.status,
+              priority: taskInput.priority,
+              due_date: taskInput.dueDate,
+              assignee_id: taskInput.assigneeId,
+              company_id: companyId,
+              creator_id: authUser?.id,
+              faq_id: taskInput.faqId || null,
+              reminder: taskInput.reminder || null,
+              checklist: taskInput.checklist || [],
+              repeat_frequency: taskInput.repeatFrequency || 'none',
+              started_at: taskInput.status === TaskStatus.IN_PROGRESS ? now : null
+            });
+          }
+        });
+      });
+
+      const { data, error } = await db.insert('tasks', tasksToAdd);
+
+      console.log('Resultado da inserção:', { data, error, tasksToAdd });
+
+      if (error) {
+        console.error('Erro ao criar tarefas:', error);
+        alert('Erro ao criar tarefas. Verifique o console para detalhes.');
+        return;
+      }
+
+      if (!error && data) {
+        const newTasks = data.map(mapTaskFromDB);
+        console.log('Tarefas criadas com sucesso:', newTasks);
+        setTasks(prev => [...newTasks, ...prev]);
+      }
     }
+    setIsCreateModalOpen(false);
   };
 
-  // Handlers that trigger the Confirmation Modal
-  const handleDeleteTask = (taskId: string) => {
-    setDeleteConfirmation({ isOpen: true, type: 'task', id: taskId });
-  };
+  const handleDeleteTask = (taskId: string) => setDeleteConfirmation({ isOpen: true, type: 'task', id: taskId });
+  const handleDeleteCompany = (id: string) => setDeleteConfirmation({ isOpen: true, type: 'company', id: id });
+  const handleDeleteCollaborator = (id: string) => setDeleteConfirmation({ isOpen: true, type: 'collaborator', id: id });
+  const handleDeleteTeam = (teamName: string) => setDeleteConfirmation({ isOpen: true, type: 'team', id: teamName });
 
-  const handleDeleteCompany = (id: string) => {
-    setDeleteConfirmation({ isOpen: true, type: 'company', id: id });
-  };
-
-  const handleDeleteCollaborator = (id: string) => {
-    setDeleteConfirmation({ isOpen: true, type: 'collaborator', id: id });
-  };
-
-  const handleDeleteTeam = (teamName: string) => {
-    setDeleteConfirmation({ isOpen: true, type: 'team', id: teamName });
-  };
-
-  // The actual delete execution
-  const executeDelete = () => {
+  const executeDelete = async () => {
     const { type, id } = deleteConfirmation;
     if (!type || !id) return;
 
+    let error = null;
     if (type === 'task') {
-      setTasks(prev => prev.filter(t => t.id !== id));
+      ({ error } = await db.delete('tasks', id));
+      if (!error) {
+        setTasks(prev => prev.filter(t => t.id !== id));
+      } else {
+        console.error('Error deleting task:', error);
+        alert('Erro ao excluir tarefa no banco de dados.');
+      }
     } else if (type === 'company') {
-      setCompanies(prev => prev.filter(c => c.id !== id));
-      setTasks(prev => prev.filter(t => t.companyId !== id)); // Cascade delete
+      ({ error } = await db.delete('companies', id));
+      if (!error) {
+        setCompanies(prev => prev.filter(c => c.id !== id));
+        setTasks(prev => prev.filter(t => t.companyId !== id));
+      } else {
+        console.error('Error deleting company:', error);
+        alert('Erro ao excluir empresa no banco de dados.');
+      }
     } else if (type === 'collaborator') {
-      setCollaborators(prev => prev.filter(c => c.id !== id));
+      ({ error } = await db.delete('profiles', id));
+      if (!error) {
+        setCollaborators(prev => prev.filter(c => c.id !== id));
+      } else {
+        console.error('Error deleting collaborator:', error);
+        alert('Erro ao remover colaborador no banco de dados.');
+      }
     } else if (type === 'team') {
-      setTeams(prev => prev.filter(t => t !== id));
+      const { error: teamError } = await db.from('teams').delete().eq('name', id);
+      if (!teamError) {
+        setTeams(prev => prev.filter(t => t !== id));
+      } else {
+        console.error('Error deleting team:', teamError);
+        alert('Erro ao excluir equipe no banco de dados.');
+      }
     }
+    setDeleteConfirmation({ isOpen: false, type: null, id: null });
   };
 
-  const handleAddCompany = (name: string, team: string) => {
+  const handleAddCompany = async (name: string, teamsToAdd: string[]) => {
     const colors = ['bg-blue-600', 'bg-green-600', 'bg-red-500', 'bg-purple-600', 'bg-orange-500', 'bg-indigo-600'];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
 
-    const newCompany: Company = {
-      id: `comp-${Date.now()}`,
+    const { data, error } = await db.insert('companies', {
       name,
-      team: team,
+      team: JSON.stringify(teamsToAdd),
       logo: randomColor
-    };
-    setCompanies(prev => [...prev, newCompany]);
-  };
-
-  const handleAddCollaborator = (name: string, role: string) => {
-    const newCollab: Collaborator = {
-      id: `c${Date.now()}`,
-      name,
-      role,
-      avatar: `https://picsum.photos/100/100?random=${Date.now()}`
-    };
-    setCollaborators(prev => [...prev, newCollab]);
-  };
-
-  const handleEditCollaborator = (id: string, name: string, role: string) => {
-    setCollaborators(prev => prev.map(c =>
-      c.id === id ? { ...c, name, role } : c
-    ));
-  };
-
-  const handleAddTeam = (teamName: string) => {
-    if (!teams.includes(teamName)) {
-      setTeams(prev => [...prev, teamName]);
+    });
+    if (!error && data) {
+      setCompanies(prev => [...prev, mapCompanyFromDB(data[0])]);
     }
   };
 
-  // FAQ Handlers
-  const handleAddFAQ = (faq: Omit<FAQItem, 'id'>) => {
-    const newFaq: FAQItem = {
-      ...faq,
-      id: `faq-${Date.now()}`
-    };
-    setFaqs(prev => [...prev, newFaq]);
+  const handleUpdateCompany = async (id: string, name: string, teamsToUpdate: string[]) => {
+    const { error } = await db.update('companies', id, {
+      name,
+      team: JSON.stringify(teamsToUpdate)
+    });
+    if (!error) {
+      setCompanies(prev => prev.map(c => c.id === id ? { ...c, name, team: teamsToUpdate } : c));
+    } else {
+      console.error('Error updating company:', error);
+      alert('Erro ao atualizar dados da empresa.');
+    }
   };
 
-  const handleUpdateFAQ = (id: string, updatedFaq: Omit<FAQItem, 'id'>) => {
-    setFaqs(prev => prev.map(f => f.id === id ? { ...f, ...updatedFaq } : f));
+  const handleAddCollaborator = async (name: string, role: string, isManager: boolean, email: string, accessLevel?: string) => {
+    if (email) {
+      await handleAddAuthorizedEmail(email, name, role, isManager, accessLevel);
+    } else {
+      alert("Para adicionar um novo membro, você deve informar o e-mail que ele usará para o acesso.");
+    }
   };
 
-  const handleDeleteFAQ = (id: string) => {
-    setFaqs(prev => prev.filter(f => f.id !== id));
+  const handleEditCollaborator = async (id: string, name: string, role: string, isManager: boolean, accessLevel?: string) => {
+    const { error } = await db.update('profiles', id, { full_name: name, role, is_manager: isManager, access_level: accessLevel });
+    if (!error) {
+      setCollaborators(prev => prev.map(c => c.id === id ? { ...c, name, role, isManager, accessLevel } : c));
+    } else {
+      console.error('Error updating profile:', error);
+      alert('Erro ao atualizar perfil no banco de dados.');
+    }
   };
 
-  // Helper to get modal texts
+  const handleAddTeam = async (teamName: string) => {
+    if (!teams.includes(teamName)) {
+      const { data, error } = await db.insert('teams', { name: teamName });
+      if (!error) {
+        setTeams(prev => [...prev, teamName]);
+      } else {
+        console.error('Error adding team to DB:', error);
+        alert(`Erro ao salvar equipe no banco: ${error.message}`);
+      }
+    }
+  };
+
+  const handleAddAuthorizedEmail = async (email: string, fullName: string, role: string, isManager: boolean, accessLevel?: string) => {
+    const { data, error } = await db.insert('authorized_emails', {
+      email,
+      full_name: fullName,
+      role,
+      is_manager: isManager,
+      access_level: accessLevel || (isManager ? 'gestor' : 'colaborador'),
+      created_by: authUser?.id
+    });
+    if (!error && data) {
+      setAuthorizedEmails(prev => [...prev, data[0]]);
+    }
+  };
+
+  const handleDeleteAuthorizedEmail = async (id: string) => {
+    const { error } = await db.delete('authorized_emails', id);
+    if (!error) {
+      setAuthorizedEmails(prev => prev.filter(a => a.id !== id));
+    }
+  };
+
+  const handleAddFAQ = async (faq: Omit<FAQItem, 'id'>) => {
+    const { data, error } = await db.insert('faqs', {
+      question: faq.question,
+      answer: faq.answer,
+      url: faq.url,
+      pdf_url: faq.pdfUrl
+    });
+    if (!error && data) setFaqs(prev => [...prev, data[0] as FAQItem]);
+  };
+
+  const handleUpdateFAQ = async (id: string, updatedFaq: Omit<FAQItem, 'id'>) => {
+    const { error } = await db.update('faqs', id, {
+      question: updatedFaq.question,
+      answer: updatedFaq.answer,
+      url: updatedFaq.url,
+      pdf_url: updatedFaq.pdfUrl
+    });
+    if (!error) setFaqs(prev => prev.map(f => f.id === id ? { ...f, ...updatedFaq } : f));
+  };
+
+  const handleDeleteFAQ = async (id: string) => {
+    const { error } = await db.delete('faqs', id);
+    if (!error) setFaqs(prev => prev.filter(f => f.id !== id));
+  };
+
+  const handleAddTaskTemplate = async (template: any) => {
+    // 1. Insert Template
+    const { data: tData, error: tErr } = await db.from('task_templates').insert({
+      name: template.name,
+      description: template.description,
+      created_by: authUser?.id
+    }).select();
+
+    if (!tErr && tData) {
+      const newTmpl = { ...tData[0], tasks: [] };
+      setTaskTemplates(prev => [...prev, newTmpl]);
+      return newTmpl.id;
+    }
+    return null;
+  };
+
+  const handleAddTemplateTask = async (templateId: string, task: any) => {
+    const { data, error } = await db.from('template_tasks').insert({
+      template_id: templateId,
+      title: task.title,
+      description: task.description,
+      priority: task.priority
+    }).select();
+
+    if (!error && data) {
+      setTaskTemplates(prev => prev.map(tmpl =>
+        tmpl.id === templateId
+          ? { ...tmpl, tasks: [...tmpl.tasks, { ...data[0], activities: [] }] }
+          : tmpl
+      ));
+      return data[0].id;
+    }
+    return null;
+  };
+
+  const handleAddTemplateActivity = async (templateId: string, taskId: string, activityTitle: string) => {
+    const { data, error } = await db.from('template_activities').insert({
+      template_task_id: taskId,
+      title: activityTitle
+    }).select();
+
+    if (!error && data) {
+      setTaskTemplates(prev => prev.map(tmpl =>
+        tmpl.id === templateId
+          ? {
+            ...tmpl,
+            tasks: tmpl.tasks.map((tk: any) =>
+              tk.id === taskId ? { ...tk, activities: [...tk.activities, data[0]] } : tk
+            )
+          }
+          : tmpl
+      ));
+    }
+  };
+
+  const handleUpdateTaskTemplate = async (id: string, updates: any) => {
+    const { error } = await db.from('task_templates').update(updates).eq('id', id);
+    if (!error) {
+      setTaskTemplates(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    }
+  };
+
+  const handleUpdateTemplateTask = async (templateId: string, taskId: string, updates: any) => {
+    const { error } = await db.from('template_tasks').update(updates).eq('id', taskId);
+    if (!error) {
+      setTaskTemplates(prev => prev.map(tmpl =>
+        tmpl.id === templateId
+          ? {
+            ...tmpl,
+            tasks: tmpl.tasks.map((tk: any) => tk.id === taskId ? { ...tk, ...updates } : tk)
+          }
+          : tmpl
+      ));
+    }
+  };
+
+  const handleDeleteTemplateActivity = async (templateId: string, taskId: string, activityId: string) => {
+    const { error } = await db.from('template_activities').delete().eq('id', activityId);
+    if (!error) {
+      setTaskTemplates(prev => prev.map(tmpl =>
+        tmpl.id === templateId
+          ? {
+            ...tmpl,
+            tasks: tmpl.tasks.map((tk: any) =>
+              tk.id === taskId
+                ? { ...tk, activities: tk.activities.filter((act: any) => act.id !== activityId) }
+                : tk
+            )
+          }
+          : tmpl
+      ));
+    }
+  };
+
+  const handleDeleteTaskTemplate = async (id: string) => {
+    const { error } = await db.from('task_templates').delete().eq('id', id);
+    if (!error) {
+      setTaskTemplates(prev => prev.filter(t => t.id !== id));
+    }
+  };
+
+  const handleDeleteTemplateTask = async (templateId: string, taskId: string) => {
+    const { error } = await db.from('template_tasks').delete().eq('id', taskId);
+    if (!error) {
+      setTaskTemplates(prev => prev.map(tmpl =>
+        tmpl.id === templateId
+          ? { ...tmpl, tasks: tmpl.tasks.filter((tk: any) => tk.id !== taskId) }
+          : tmpl
+      ));
+    }
+  };
+
   const getDeleteModalInfo = () => {
     switch (deleteConfirmation.type) {
-      case 'task': return { title: 'Excluir Tarefa', description: 'Tem certeza que deseja excluir esta tarefa? Esta ação não pode ser desfeita.' };
-      case 'company': return { title: 'Excluir Empresa', description: 'Tem certeza? Isso excluirá a empresa e TODAS as suas tarefas associadas.' };
-      case 'collaborator': return { title: 'Remover Membro', description: 'Tem certeza que deseja remover este membro da equipe?' };
-      case 'team': return { title: 'Remover Equipe', description: 'Tem certeza? Membros existentes nesta equipe manterão o nome, mas não será possível selecionar para novos.' };
+      case 'task': return { title: 'Excluir Tarefa', description: 'Tem certeza que deseja excluir esta tarefa?' };
+      case 'company': return { title: 'Excluir Empresa', description: 'Isso excluirá a empresa e todas as suas tarefas.' };
+      case 'collaborator': return { title: 'Remover Membro', description: 'Deseja remover este perfil?' };
+      case 'team': return { title: 'Remover Equipe', description: 'A equipe será removida da lista de sugestões.' };
       default: return { title: '', description: '' };
     }
   };
 
-  const modalInfo = getDeleteModalInfo();
+  if (authLoading) return <div className="h-screen w-screen flex items-center justify-center bg-slate-900"><div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full"></div></div>;
+  if (!authUser) return <SupabaseLogin />;
 
-  // AUTH GUARD
-  const handleLogin = (username: string) => {
-    const user = collaborators.find(c =>
-      c.name.toLowerCase() === username.toLowerCase() ||
-      c.id.toLowerCase() === username.toLowerCase()
-    );
-
-    if (user) {
-      setCurrentUserId(user.id);
-      setIsAuthenticated(true);
-
-      // Auto-detect manager roles
-      const managerRoles = ['Product Owner', 'Scrum Master', 'Manager', 'CEO'];
-      if (managerRoles.includes(user.role)) {
-        setIsManager(true);
-      } else {
-        setIsManager(false);
-      }
-    } else {
-      // Basic fallback if not found in collaborators
-      alert("Usuário não encontrado. Tente nomes como 'Ana Silva' ou 'Carlos Souza'.");
-    }
-  };
-
-  if (!isAuthenticated) {
-    return <Login onLogin={handleLogin} />;
-  }
+  const currentUser = currentUserProfile || { id: authUser.id, name: authUser.email || 'Usuário', role: 'Membro', avatar: '', isManager: false, accessLevel: 'colaborador' };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex font-sans transition-colors">
-      {/* Sidebar Navigation - Light Theme to match Sofbox */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} shadow-xl lg:shadow-none`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 lg:static ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} transition-transform duration-200`}>
         <div className="h-full flex flex-col">
-          <div className="p-8 flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-tr from-blue-500 to-cyan-400 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/30">
-              <span className="font-heading">CT</span>
-            </div>
-            <h1 className="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100 font-heading">Checklist Team</h1>
+          <div className="p-8 pb-4 flex flex-col items-center justify-center gap-2">
+            <img src="/logo.png" alt="FluxoBR Logo" className="w-32 h-32 object-contain" />
           </div>
-
           <nav className="flex-1 px-2 py-6">
             <MenuVertical
               activeHref={activeTab}
-              onItemClick={(href) => {
-                setActiveTab(href as Tab);
-                setIsMobileMenuOpen(false);
-              }}
+              onItemClick={(href) => { setActiveTab(href as Tab); setIsMobileMenuOpen(false); }}
               color="#3b82f6"
               menuItems={[
                 { label: 'Dashboard', href: Tab.DASHBOARD, icon: <LayoutDashboard className="w-5 h-5" /> },
-                { label: 'Minhas Tarefas', href: Tab.TASKS, icon: <CheckSquare className="w-5 h-5" /> },
+                { label: 'Tarefas', href: Tab.TASKS, icon: <CheckSquare className="w-5 h-5" /> },
+                { label: 'Agenda', href: Tab.AGENDA, icon: <Calendar className="w-5 h-5" /> },
                 { label: 'Empresas', href: Tab.COMPANIES, icon: <Building2 className="w-5 h-5" /> },
-                ...(isManager ? [{ label: 'FAQ Gestor', href: Tab.FAQ, icon: <HelpCircle className="w-5 h-5" /> }] : []),
-                { label: 'Configurações', href: Tab.SETTINGS, icon: <SettingsIcon className="w-5 h-5" /> },
+                ...(isAdminMode ? [{ label: 'FAQ Gestor', href: Tab.FAQ, icon: <HelpCircle className="w-5 h-5" /> }] : []),
+                ...(currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor' ? [{ label: 'Configurações', href: Tab.SETTINGS, icon: <SettingsIcon className="w-5 h-5" /> }] : []),
               ]}
             />
           </nav>
-
           <div className="p-6">
             <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-600">
-              <div className="flex items-center gap-3 mb-2">
-                {isManager ? <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div> : <div className="w-2.5 h-2.5 rounded-full bg-slate-400"></div>}
-                <span className="text-xs uppercase tracking-wider font-bold text-slate-500 dark:text-slate-400 font-heading">
-                  {isManager ? 'Modo Gestor' : 'Modo Leitura'}
+              <div className="flex items-center gap-3 mb-3">
+                <div className={`w-2.5 h-2.5 rounded-full ${isAdminMode && currentUserProfile?.accessLevel === 'admin' ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-400'}`}></div>
+                <span className={`text-xs uppercase tracking-wider font-bold ${isAdminMode && currentUserProfile?.accessLevel === 'admin' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                  {isAdminMode && currentUserProfile?.accessLevel === 'admin'
+                    ? 'Admin Mode Ativo'
+                    : currentUserProfile?.accessLevel === 'admin'
+                      ? 'Administrador'
+                      : currentUserProfile?.accessLevel === 'gestor'
+                        ? 'Gestor'
+                        : 'Colaborador'}
                 </span>
               </div>
-              <button onClick={() => setIsAuthenticated(false)} className="flex items-center gap-2 text-sm text-slate-400 hover:text-red-500 transition-colors mt-2">
-                <LogOut className="w-4 h-4" /> Sair
-              </button>
+              <button onClick={signOut} className="flex items-center gap-2 text-sm text-slate-400 hover:text-red-500 transition-colors"><LogOut className="w-4 h-4" /> Sair</button>
             </div>
           </div>
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f8fafc] dark:bg-slate-900">
-        {/* Header */}
-        <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30">
-          <div className="px-8 py-5 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="lg:hidden text-slate-500 dark:text-slate-400 hover:text-blue-600">
-                <Menu className="w-6 h-6" />
-              </button>
-
-              <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 hidden lg:block font-heading">
-                {activeTab === Tab.DASHBOARD && 'Visão Geral do Projeto'}
-                {activeTab === Tab.TASKS && 'Gerenciamento de Entregas'}
-                {activeTab === Tab.COMPANIES && 'Empresas & Portfólio'}
-                {activeTab === Tab.SETTINGS && 'Preferências do Sistema'}
-                {activeTab === Tab.FAQ && 'Perguntas Frequentes (FAQ)'}
-              </h2>
-            </div>
-
-            <div className="flex items-center gap-6">
-              <ThemeToggle />
-              <button className="relative p-2 text-slate-400 hover:text-blue-600 transition-colors">
-                <Bell className="w-6 h-6" />
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-              </button>
-              <div className="flex items-center gap-3 pl-6 border-l border-slate-200 dark:border-slate-700">
-                <img src={currentUser.avatar} alt="User" className="w-10 h-10 rounded-full ring-2 ring-blue-50 dark:ring-slate-700 shadow-sm" />
-                <div className="hidden md:block">
-                  <p className="font-bold text-slate-800 dark:text-slate-100 text-sm font-heading">{currentUser.name}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{currentUser.role}</p>
-                </div>
+        <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 px-8 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="lg:hidden text-slate-500 dark:text-slate-400"><Menu className="w-6 h-6" /></button>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 hidden lg:block font-heading">
+              {activeTab === Tab.DASHBOARD ? 'Visão Geral' : activeTab === Tab.TASKS ? 'Gerenciamento' : activeTab === Tab.COMPANIES ? 'Portfólio' : 'Configurações'}
+            </h2>
+          </div>
+          <div className="flex items-center gap-6">
+            <ThemeToggle />
+            <div className="flex items-center gap-3 pl-6 border-l border-slate-200 dark:border-slate-700">
+              <img src={currentUser.avatar} alt="User" className="w-10 h-10 rounded-full ring-2 ring-blue-50 dark:ring-slate-700" />
+              <div className="hidden md:block">
+                <p className="font-bold text-slate-800 dark:text-slate-100 text-sm">{currentUser.name}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{currentUser.role}</p>
               </div>
             </div>
           </div>
         </header>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
-          <div className="max-w-7xl mx-auto h-full">
-
-            {activeTab === Tab.DASHBOARD && (
-              <div className="space-y-8 animate-fade-in">
-                <MetricsRow metrics={metrics} />
-                <DashboardCharts tasks={filteredTasks} collaborators={collaborators} />
-
-                {/* Recent Activity Mini-List */}
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 p-8">
-                  <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 font-heading">Tarefas Recentes</h3>
-                    {isManager && (
-                      <button
-                        onClick={handleOpenCreateModal}
-                        className="text-sm bg-blue-50 text-blue-600 px-4 py-2 rounded-full font-bold hover:bg-blue-100 transition-colors"
-                      >
-                        + Criar Nova
-                      </button>
-                    )}
-                  </div>
-                  <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                    {filteredTasks.slice(0, 3).map(task => {
-                      const company = companies.find(c => c.id === task.companyId);
-                      return (
-                        <div key={task.id} className="py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors px-2 -mx-2 rounded-lg">
-                          <div>
-                            <div className="flex items-center gap-3">
-                              <span className="font-bold text-slate-800 dark:text-slate-100">{task.title}</span>
-                              {company && <span className="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">{company.name}</span>}
-                            </div>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Atualizado em {new Date().toLocaleDateString('pt-BR')}</p>
-                          </div>
-                          <span className={`text-xs px-3 py-1.5 rounded-full font-bold shadow-sm ${task.status === TaskStatus.DONE ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300'}`}>
-                            {task.status}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <button
-                    onClick={() => setActiveTab(Tab.TASKS)}
-                    className="mt-6 text-sm text-blue-600 font-bold hover:text-blue-800 hover:underline flex items-center gap-1"
-                  >
-                    Ver todas as tarefas <span aria-hidden="true">&rarr;</span>
-                  </button>
-                </div>
+        <div className={`flex-1 overflow-y-auto ${activeTab === Tab.TASKS || activeTab === Tab.AGENDA || activeTab === Tab.COMPANIES || activeTab === Tab.SETTINGS ? 'p-2 md:p-4' : 'p-4 md:p-8'}`}>
+          <div className={`${activeTab === Tab.TASKS || activeTab === Tab.AGENDA || activeTab === Tab.COMPANIES || activeTab === Tab.SETTINGS ? 'max-w-[98%]' : 'max-w-7xl'} mx-auto h-full`}>
+            {dataLoading ? (
+              <div className="flex flex-col items-center justify-center h-64 space-y-4">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <p className="text-slate-500 animate-pulse">Sincronizando com a nuvem...</p>
               </div>
-            )}
-
-            {activeTab === Tab.TASKS && (
-              <div className="space-y-6 animate-fade-in">
-                <div className="flex justify-between items-end mb-2">
-                  <div>
-                    <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 font-heading">Quadro de Tarefas</h2>
-                    <p className="text-slate-500 dark:text-slate-400">Acompanhe e atualize o status das atividades diárias.</p>
+            ) : (
+              <>
+                {activeTab === Tab.DASHBOARD && (
+                  <div className="space-y-8 animate-fade-in">
+                    <MetricsRow metrics={metrics} />
+                    <DashboardCharts tasks={filteredTasks} collaborators={filteredCollaborators} companies={filteredCompanies} />
                   </div>
-                </div>
-                <TaskManagement
-                  tasks={filteredTasks}
-                  collaborators={collaborators}
-                  companies={filteredCompanies}
-                  faqs={faqs}
-                  onUpdateStatus={handleUpdateStatus}
-                  onDeleteTask={handleDeleteTask}
-                  onEditTask={handleOpenEditModal}
-                  isManager={isManager}
-                  onOpenCreateModal={handleOpenCreateModal}
-                />
-              </div>
+                )}
+                {activeTab === Tab.TASKS && (
+                  <TaskManagement
+                    tasks={filteredTasks}
+                    collaborators={filteredCollaborators}
+                    companies={filteredCompanies}
+                    faqs={faqs}
+                    onUpdateStatus={handleUpdateStatus}
+                    onDeleteTask={handleDeleteTask}
+                    onEditTask={handleOpenEditModal}
+                    onViewTask={handleViewTask}
+                    onToggleChecklistItem={handleToggleChecklistItem}
+                    isManager={currentUserProfile?.accessLevel === 'admin' || currentUserProfile?.accessLevel === 'gestor'}
+                    onOpenCreateModal={handleOpenCreateModal}
+                  />
+                )}
+                {activeTab === Tab.AGENDA && (
+                  <AgendaView
+                    tasks={filteredTasks}
+                    collaborators={filteredCollaborators}
+                    companies={filteredCompanies}
+                    onViewTask={handleViewTask}
+                    onAddClick={(date, mode) => handleOpenCreateModal(date, mode)}
+                    isManager={currentUserProfile?.accessLevel === 'admin' || currentUserProfile?.accessLevel === 'gestor'}
+                  />
+                )}
+                {activeTab === Tab.COMPANIES && (
+                  <CompanyList
+                    companies={filteredCompanies}
+                    tasks={filteredTasks}
+                    onAddCompany={handleAddCompany}
+                    onUpdateCompany={(id, name, teams) => handleUpdateCompany(id, name, teams)}
+                    onDeleteCompany={handleDeleteCompany}
+                    collaborators={filteredCollaborators}
+                    onUpdateStatus={handleUpdateStatus}
+                    onDeleteTask={handleDeleteTask}
+                    onViewTask={handleViewTask}
+                    onToggleChecklistItem={handleToggleChecklistItem}
+                    onOpenCreateTask={handleOpenCreateModal}
+                    isManager={currentUserProfile?.accessLevel === 'admin' || currentUserProfile?.accessLevel === 'gestor'}
+                    isGestor={currentUserProfile?.accessLevel === 'gestor'}
+                    teams={teams}
+                    currentUser={currentUserProfile || currentUser}
+                  />
+                )}
+                {activeTab === Tab.SETTINGS && (
+                  <Settings
+                    isManager={isAdminMode}
+                    onToggleManager={setIsAdminMode}
+                    collaborators={filteredCollaborators}
+                    onAddCollaborator={handleAddCollaborator}
+                    onDeleteCollaborator={handleDeleteCollaborator}
+                    onEditCollaborator={handleEditCollaborator}
+                    teams={isAdminMode ? teams : [currentUser.role]}
+                    onAddTeam={handleAddTeam}
+                    onDeleteTeam={handleDeleteTeam}
+                    authorizedEmails={authorizedEmails}
+                    onAddAuthorizedEmail={handleAddAuthorizedEmail}
+                    onDeleteAuthorizedEmail={handleDeleteAuthorizedEmail}
+                    currentUser={currentUser}
+                    taskTemplates={taskTemplates}
+                    onAddTaskTemplate={handleAddTaskTemplate}
+                    onDeleteTaskTemplate={handleDeleteTaskTemplate}
+                    onAddTemplateTask={handleAddTemplateTask}
+                    onDeleteTemplateTask={handleDeleteTemplateTask}
+                    onAddTemplateActivity={handleAddTemplateActivity}
+                    onUpdateTaskTemplate={handleUpdateTaskTemplate}
+                    onUpdateTemplateTask={handleUpdateTemplateTask}
+                    onDeleteTemplateActivity={handleDeleteTemplateActivity}
+                  />
+                )}
+                {activeTab === Tab.FAQ && isAdminMode && (
+                  <FAQManager faqs={faqs} onAdd={handleAddFAQ} onUpdate={handleUpdateFAQ} onDelete={handleDeleteFAQ} />
+                )}
+              </>
             )}
-
-            {activeTab === Tab.COMPANIES && (
-              <CompanyList
-                companies={filteredCompanies}
-                tasks={filteredTasks}
-                isManager={isManager}
-                onAddCompany={handleAddCompany}
-                onDeleteCompany={handleDeleteCompany}
-                collaborators={collaborators}
-                onUpdateStatus={handleUpdateStatus}
-                onDeleteTask={handleDeleteTask}
-                onOpenCreateTask={handleOpenCreateModal}
-                teams={teams}
-                currentUser={currentUser}
-              />
-            )}
-
-            {activeTab === Tab.SETTINGS && (
-              <Settings
-                isManager={isManager}
-                onToggleManager={setIsManager}
-                collaborators={collaborators}
-                onAddCollaborator={handleAddCollaborator}
-                onDeleteCollaborator={handleDeleteCollaborator}
-                onEditCollaborator={handleEditCollaborator}
-                teams={teams}
-                onAddTeam={handleAddTeam}
-                onDeleteTeam={handleDeleteTeam}
-              />
-            )}
-
-            {activeTab === Tab.FAQ && isManager && (
-              <FAQManager
-                faqs={faqs}
-                onAdd={handleAddFAQ}
-                onUpdate={handleUpdateFAQ}
-                onDelete={handleDeleteFAQ}
-              />
-            )}
-
           </div>
         </div>
       </main>
 
       <CreateTaskModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setPreselectedDate(null);
+        }}
         onSave={handleSaveTask}
-        collaborators={collaborators}
-        companies={companies}
+        collaborators={filteredCollaborators}
+        companies={filteredCompanies}
         faqs={faqs}
+        taskTemplates={taskTemplates}
         taskToEdit={editingTask || undefined}
+        preselectedDate={preselectedDate || undefined}
+        initialMode={createModalMode}
       />
 
       <DeleteConfirmModal
         isOpen={deleteConfirmation.isOpen}
         onClose={() => setDeleteConfirmation({ isOpen: false, type: null, id: null })}
         onConfirm={executeDelete}
-        title={modalInfo.title}
-        description={modalInfo.description}
+        title={getDeleteModalInfo().title}
+        description={getDeleteModalInfo().description}
+      />
+
+      <TaskDetailsModal
+        isOpen={!!viewingTask}
+        task={viewingTask}
+        onClose={() => setViewingTask(null)}
+        onToggleActivity={handleToggleChecklistItem}
       />
     </div>
   );

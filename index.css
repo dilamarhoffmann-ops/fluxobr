@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
@@ -6,36 +7,56 @@
 
 /* Root Variables for Light Theme */
 :root {
-  --color-bg-primary: 248 250 252; /* slate-50 */
-  --color-bg-secondary: 255 255 255; /* white */
-  --color-bg-tertiary: 241 245 249; /* slate-100 */
-  
-  --color-text-primary: 15 23 42; /* slate-900 */
-  --color-text-secondary: 51 65 85; /* slate-700 */
-  --color-text-tertiary: 100 116 139; /* slate-500 */
-  
-  --color-border-primary: 226 232 240; /* slate-200 */
-  --color-border-secondary: 241 245 249; /* slate-100 */
-  
-  --color-accent: 59 130 246; /* blue-500 */
-  --color-accent-hover: 37 99 235; /* blue-600 */
+  --color-bg-primary: 248 250 252;
+  /* slate-50 */
+  --color-bg-secondary: 255 255 255;
+  /* white */
+  --color-bg-tertiary: 241 245 249;
+  /* slate-100 */
+
+  --color-text-primary: 15 23 42;
+  /* slate-900 */
+  --color-text-secondary: 51 65 85;
+  /* slate-700 */
+  --color-text-tertiary: 100 116 139;
+  /* slate-500 */
+
+  --color-border-primary: 226 232 240;
+  /* slate-200 */
+  --color-border-secondary: 241 245 249;
+  /* slate-100 */
+
+  --color-accent: 59 130 246;
+  /* blue-500 */
+  --color-accent-hover: 37 99 235;
+  /* blue-600 */
 }
 
 /* Dark Theme Variables */
 .dark {
-  --color-bg-primary: 15 23 42; /* slate-900 */
-  --color-bg-secondary: 30 41 59; /* slate-800 */
-  --color-bg-tertiary: 51 65 85; /* slate-700 */
-  
-  --color-text-primary: 248 250 252; /* slate-50 */
-  --color-text-secondary: 226 232 240; /* slate-200 */
-  --color-text-tertiary: 148 163 184; /* slate-400 */
-  
-  --color-border-primary: 51 65 85; /* slate-700 */
-  --color-border-secondary: 71 85 105; /* slate-600 */
-  
-  --color-accent: 59 130 246; /* blue-500 */
-  --color-accent-hover: 96 165 250; /* blue-400 */
+  --color-bg-primary: 15 23 42;
+  /* slate-900 */
+  --color-bg-secondary: 30 41 59;
+  /* slate-800 */
+  --color-bg-tertiary: 51 65 85;
+  /* slate-700 */
+
+  --color-text-primary: 248 250 252;
+  /* slate-50 */
+  --color-text-secondary: 226 232 240;
+  /* slate-200 */
+  --color-text-tertiary: 148 163 184;
+  /* slate-400 */
+
+  --color-border-primary: 51 65 85;
+  /* slate-700 */
+  --color-border-secondary: 71 85 105;
+  /* slate-600 */
+
+  --color-accent: 59 130 246;
+  /* blue-500 */
+  --color-accent-hover: 96 165 250;
+  /* blue-400 */
 }
 
 * {
@@ -45,7 +66,7 @@
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.3s ease, color 0.3s ease;
@@ -91,7 +112,9 @@ body {
 }
 
 /* Preserve specific transitions */
-button, a, [role="button"] {
+button,
+a,
+[role="button"] {
   transition-property: all;
 }
 
@@ -101,6 +124,7 @@ button, a, [role="button"] {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);

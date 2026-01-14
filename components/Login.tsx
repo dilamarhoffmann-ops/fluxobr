@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 interface LoginProps {
-  onLogin: (username: string) => void;
+  onLogin: (username: string, password: string) => void;
 }
 
 export const Login: React.FC<LoginProps> = ({ onLogin }) => {
@@ -15,87 +15,102 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
       setError('Por favor, insira seu nome de usuário');
       return;
     }
-    onLogin(username);
+    if (!password.trim()) {
+      setError('Por favor, insira sua senha');
+      return;
+    }
+    onLogin(username, password);
   };
 
   return (
-    <div className="min-h-screen w-full relative overflow-hidden flex items-center bg-[linear-gradient(135deg,#4facfe_0%,#00f2fe_100%)] font-sans">
+    <div className="min-h-screen w-full flex bg-white font-sans overflow-hidden">
 
-      {/* Background White Wave Effect */}
-      <div
-        className="absolute bottom-0 left-0 w-full h-[30%] bg-white z-0 pointer-events-none"
-        style={{ clipPath: 'ellipse(70% 100% at 50% 100%)' }}
-      ></div>
+      {/* Left Side - Form Section */}
+      <div className="w-full lg:w-[480px] xl:w-[550px] flex flex-col justify-center p-8 lg:p-16 relative z-10 bg-white border-r border-slate-100">
+        <div className="mb-12">
+          <div className="w-12 h-12 bg-gradient-to-tr from-blue-600 to-cyan-400 rounded-xl flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/30 mb-6">
+            <span className="font-heading text-xl">CT</span>
+          </div>
+          <h1 className="text-3xl lg:text-4xl font-bold text-slate-900 font-heading mb-3 tracking-tight">
+            Bem-vindo de volta
+          </h1>
+          <p className="text-slate-500 text-lg">
+            Acesse seu dashboard e gerencie suas tarefas.
+          </p>
+        </div>
 
-      {/* Floating Illustration - Positioned relative to screen, strictly for Large Screens */}
-      {/* Moved outside the container to prevent layout clipping issues */}
-      <div className="hidden lg:flex absolute right-0 top-1/2 transform -translate-y-1/2 w-[55%] h-full pointer-events-none z-10 items-center justify-center pr-10">
-        <img
-          src="/login-mockup-final.png"
-          className="w-full max-w-[900px] h-auto object-contain drop-shadow-2xl animate-fade-in-up"
-          alt="Dashboard Analytics Mockup"
-          style={{ filter: 'drop-shadow(0 25px 50px rgba(0,0,0,0.25))' }}
-        />
-      </div>
-
-      <div className="container mx-auto px-6 relative z-20">
-        <div className="flex flex-col lg:flex-row items-center justify-between">
-
-          {/* Login Card */}
-          <div className="w-full max-w-[400px] bg-white p-10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] lg:ml-[5%] animate-fade-in relative backdrop-blur-sm bg-white/95">
-            <div className="mb-8 text-center">
-              <h2 className="text-[#2c3e50] text-3xl font-bold mb-2 font-heading">
-                Bem-vindo
-              </h2>
-              <p className="text-slate-400 text-sm">Insira seus dados para acessar o AgilePulse</p>
+        <form onSubmit={handleSubmit} className="space-y-6 w-full max-w-sm">
+          {error && (
+            <div className="p-4 bg-red-50 text-red-600 text-sm font-medium rounded-xl border border-red-100 flex items-center gap-2 animate-shake">
+              <span className="block w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+              {error}
             </div>
+          )}
 
-            <form onSubmit={handleSubmit}>
-              {error && (
-                <div className="mb-4 p-3 bg-red-50 text-red-600 text-xs font-bold rounded-lg border border-red-100 animate-shake">
-                  {error}
-                </div>
-              )}
-              <div className="mb-5 group">
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Usuário</label>
-                <input
-                  type="text"
-                  placeholder="Seu usuário"
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                />
-              </div>
-
-              <div className="mb-6 group">
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1 ml-1">Senha</label>
-                <input
-                  type="password"
-                  placeholder="Sua senha"
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white border-none p-3.5 rounded-lg font-bold cursor-pointer text-sm hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-500/30 transform hover:-translate-y-0.5 active:translate-y-0"
-              >
-                ACESSAR SISTEMA
-              </button>
-
-              <div className="flex justify-between text-xs text-slate-500 mt-6 px-1">
-                <a href="#" className="hover:text-blue-600 transition-colors">Esqueceu a Senha?</a>
-                <a href="#" className="hover:text-blue-600 transition-colors font-semibold">Criar Conta</a>
-              </div>
-            </form>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700 ml-1">Usuário</label>
+            <input
+              type="text"
+              placeholder="ex: ana.silva"
+              className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 font-medium"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
           </div>
 
-          {/* Spacer for Flex Layout on Large Screens to push form left and leave space for image */}
-          <div className="hidden lg:block w-1/2"></div>
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-slate-700 ml-1">Senha</label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              className="w-full h-12 px-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all duration-200 font-medium"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input type="checkbox" className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer" />
+              <span className="text-slate-500 group-hover:text-slate-700 transition-colors">Lembrar de mim</span>
+            </label>
+            <a href="#" className="text-blue-600 font-bold hover:text-blue-700 hover:underline">Esqueceu a senha?</a>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/20 hover:shadow-blue-600/40 transition-all duration-200 transform hover:-translate-y-0.5 active:translate-y-0 text-base"
+          >
+            Entrar no Sistema
+          </button>
+        </form>
+
+        <div className="mt-12 text-center text-sm text-slate-400">
+          Não tem uma conta? <a href="#" className="text-blue-600 font-bold hover:underline">Solicite acesso</a>
         </div>
       </div>
+
+      {/* Right Side - Image Section */}
+      <div className="hidden lg:flex flex-1 relative bg-slate-50 overflow-hidden items-center justify-center p-12">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-100/50 via-slate-50 to-slate-50"></div>
+
+        {/* Decorative circles */}
+        <div className="absolute top-20 right-20 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 left-20 w-80 h-80 bg-cyan-400/10 rounded-full blur-3xl"></div>
+
+        <div className="relative z-10 w-full max-w-4xl transform hover:scale-[1.02] transition-transform duration-700 ease-out">
+          <img
+            src="/modern-login.png"
+            alt="Dashboard 3D Illustration"
+            className="w-full h-auto object-contain drop-shadow-2xl"
+          />
+        </div>
+
+        <div className="absolute bottom-10 left-0 w-full text-center z-20">
+          <p className="text-slate-400 font-medium text-sm tracking-wide">AgilePulse &copy; 2024</p>
+        </div>
+      </div>
+
     </div>
   );
 };

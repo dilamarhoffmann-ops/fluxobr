@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { HelpCircle, ChevronRight, BookOpen, Plus, Trash2, Edit2, Save, X, ExternalLink } from 'lucide-react';
+import { HelpCircle, ChevronRight, BookOpen, Plus, Trash2, Edit2, Save, X, ExternalLink, FileText, FileUp, Paperclip } from 'lucide-react';
 import { FAQItem } from '../types';
 
 interface FAQManagerProps {
@@ -15,18 +15,45 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
   const [editingId, setEditingId] = useState<string | null>(null);
 
   // Form State
-  const [formData, setFormData] = useState({ question: '', answer: '', url: '' });
+  const [formData, setFormData] = useState({ question: '', answer: '', url: '', pdfUrl: '' });
 
   const resetForm = () => {
-    setFormData({ question: '', answer: '', url: '' });
+    setFormData({ question: '', answer: '', url: '', pdfUrl: '' });
     setIsAdding(false);
     setEditingId(null);
   };
 
   const handleEditClick = (faq: FAQItem) => {
-    setFormData({ question: faq.question, answer: faq.answer, url: faq.url || '' });
+    setFormData({
+      question: faq.question,
+      answer: faq.answer,
+      url: faq.url || '',
+      pdfUrl: faq.pdfUrl || ''
+    });
     setEditingId(faq.id);
     setIsAdding(false);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("O arquivo é muito grande. O limite é 2MB para armazenamento local.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, pdfUrl: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    } else if (file) {
+      alert("Por favor, selecione apenas arquivos PDF.");
+    }
+  };
+
+  const removeFile = () => {
+    setFormData({ ...formData, pdfUrl: '' });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -99,6 +126,41 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
               />
               <p className="text-xs text-slate-400 mt-1">Este link será usado quando esta FAQ for selecionada em uma tarefa.</p>
             </div>
+
+            <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-200">
+              <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                <Paperclip className="w-4 h-4 text-slate-400" /> Anexar Documento PDF
+              </label>
+
+              {formData.pdfUrl ? (
+                <div className="flex items-center justify-between bg-white p-2 rounded border border-indigo-100">
+                  <div className="flex items-center gap-2 text-indigo-600">
+                    <FileText className="w-4 h-4" />
+                    <span className="text-xs font-medium">Documento anexado</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeFile}
+                    className="text-red-500 hover:text-red-700 p-1"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={handleFileChange}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                  />
+                  <div className="flex items-center justify-center gap-2 py-4 border border-dashed border-slate-300 rounded-lg bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 transition-colors">
+                    <FileUp className="w-5 h-5" />
+                    <span className="text-sm">Clique para subir PDF (Máx 2MB)</span>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
@@ -122,16 +184,16 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
       <div className="grid gap-4">
         {faqs.map((faq) => (
           <div key={faq.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-all group relative">
-            
+
             <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button 
+              <button
                 onClick={() => handleEditClick(faq)}
                 className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                 title="Editar"
               >
                 <Edit2 className="w-4 h-4" />
               </button>
-              <button 
+              <button
                 onClick={() => onDelete(faq.id)}
                 className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                 title="Excluir"
@@ -152,11 +214,18 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                     <ExternalLink className="w-3 h-3" /> Acessar Link Relacionado
                   </a>
                 )}
+                {faq.pdfUrl && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-[10px] font-bold uppercase tracking-wider">
+                      <FileText className="w-3 h-3" /> Possui PDF anexado
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         ))}
-        
+
         {faqs.length === 0 && (
           <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
             <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />

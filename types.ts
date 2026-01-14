@@ -19,13 +19,15 @@ export interface Collaborator {
   name: string;
   avatar: string;
   role: string; // Represents the Team
+  isManager?: boolean;
+  accessLevel?: string; // 'colaborador', 'gestor', 'admin'
 }
 
 export interface Company {
   id: string;
   name: string;
   logo: string; // URL or color string
-  team: string; // Changed from industry to team
+  team: string[]; // Changed from string to string[] to support multiple teams
 }
 
 export interface Task {
@@ -41,6 +43,10 @@ export interface Task {
   startedAt?: string; // ISO Date string
   completedAt?: string; // ISO Date string
   faqId?: string; // Reference to FAQItem ID
+  reminder?: string; // ISO string for reminder date/time
+  checklist?: { title: string, completed: boolean }[];
+  repeatFrequency?: 'none' | 'daily' | 'weekly' | 'monthly';
+  creatorId?: string;
 }
 
 export type TaskInput = Omit<Task, 'id' | 'createdAt' | 'startedAt' | 'completedAt' | 'companyId'>;
@@ -58,4 +64,27 @@ export interface FAQItem {
   question: string;
   answer: string;
   url?: string; // External link for documentation
+  pdfUrl?: string; // Base64 or Blob URL for attached PDF
+}
+
+export interface TemplateActivity {
+  id: string;
+  templateTaskId: string;
+  title: string;
+}
+
+export interface TemplateTask {
+  id: string;
+  templateId: string;
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  activities: TemplateActivity[];
+}
+
+export interface TaskTemplate {
+  id: string;
+  name: string;
+  description: string;
+  tasks: TemplateTask[];
 }

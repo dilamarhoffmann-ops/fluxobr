@@ -4,6 +4,7 @@ import { Collaborator, Task, TaskPriority, TaskStatus, Company, FAQItem } from '
 export const ADMIN_PASSWORD = 'admin';
 
 export const COLLABORATORS: Collaborator[] = [
+  { id: 'admin', name: 'Administrador do Sistema', role: 'Super User', avatar: 'https://picsum.photos/100/100?random=100', isManager: true },
   { id: 'c1', name: 'Ana Silva', role: 'Frontend Dev', avatar: 'https://picsum.photos/100/100?random=1' },
   { id: 'c2', name: 'Carlos Souza', role: 'Backend Dev', avatar: 'https://picsum.photos/100/100?random=2' },
   { id: 'c3', name: 'Mariana Lima', role: 'QA Engineer', avatar: 'https://picsum.photos/100/100?random=3' },
