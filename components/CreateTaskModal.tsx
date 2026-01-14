@@ -142,17 +142,65 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       onSave(singleTask, selectedCompanyIds, replicateToAllMembers);
     } else {
       // Modo normal ou lembrete: criar tarefa única
-      if (!formData.title || (!formData.assigneeId && !replicateToAllMembers) || selectedCompanyIds.length === 0) return;
+      const isReminder = creationMode === 'lembrete';
 
-      const taskData = creationMode === 'lembrete'
+      if (!formData.title) {
+        alert('Por favor, informe o título.');
+        return;
+      }
+
+      if (!formData.assigneeId && !replicateToAllMembers) {
+        alert('Por favor, selecione um responsável ou ative a replicação.');
+        return;
+      }
+
+      if (isReminder && !formData.reminder) {
+        alert('Por favor, defina a data e hora do lembrete.');
+        return;
+      }
+
+      if (!isReminder && selectedCompanyIds.length === 0) {
+        alert('Por favor, selecione pelo menos uma empresa.');
+        return;
+      }
+
+
+      // Normalização de Datas para ISO UTC
+      let finalDueDate = formData.dueDate;
+      // Se for apenas data (YYYY-MM-DD), adiciona T12:00:00 para evitar shift de timezone
+      if (finalDueDate.length === 10) {
+        finalDueDate += 'T12:00:00.000Z';
+      } else {
+        // Se for datetime-local (YYYY-MM-DDTHH:mm), converte para ISO UTC real
+        try {
+          finalDueDate = new Date(finalDueDate).toISOString();
+        } catch (e) {
+          console.error("Erro ao converter data", e);
+          // Fallback para evitar crash
+          finalDueDate = new Date().toISOString();
+        }
+      }
+
+      let finalReminder = formData.reminder ? new Date(formData.reminder).toISOString() : '';
+
+      const taskData = isReminder
         ? {
           ...formData,
+          dueDate: finalDueDate,
+          reminder: finalReminder || null,
           status: TaskStatus.PENDING,
           priority: TaskPriority.MEDIUM,
           checklist: []
         }
-        : { ...formData, checklist: formData.checklist || [] };
+        : {
+          ...formData,
+          dueDate: finalDueDate,
+          reminder: finalReminder || null,
+          checklist: formData.checklist || []
+        };
 
+      // Se for lembrete e nenhuma empresa selecionada, enviamos um array vazio
+      // O App.tsx lidará com a criação sem empresa se o array estiver vazio
       onSave(taskData, selectedCompanyIds, replicateToAllMembers);
     }
 
@@ -396,7 +444,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
               <Building2 className="w-4 h-4 text-slate-400" />
-              {taskToEdit ? 'Empresa' : 'Empresas (Replicar tarefa)'}
+              {taskToEdit ? 'Empresa' : creationMode === 'lembrete' ? 'Empresas (Opcional para Lembretes)' : 'Empresas (Replicar tarefa)'}
             </label>
             <div className={`grid grid-cols-1 gap-2 bg-slate-50 dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[60px] max-h-32 overflow-y-auto`}>
               {companies.length === 0 ? (
@@ -477,10 +525,10 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
             <div className="space-y-1">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-slate-400" /> Prazo
+                <Calendar className="w-4 h-4 text-slate-400" /> Prazo (Data e Hora)
               </label>
               <input
-                type="date"
+                type="datetime-local"
                 required
                 className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                 value={formData.dueDate}
@@ -488,6 +536,27 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
               />
             </div>
           </div>
+
+          {(creationMode === 'lembrete' || creationMode === 'nova') && (
+            <div className={`space-y-1 animate-in slide-in-from-top-1 ${creationMode === 'lembrete' ? '' : 'mt-4 border-t pt-4 border-slate-100 dark:border-slate-800'}`}>
+              <label className="text-sm font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+                <Bell className="w-4 h-4" />
+                {creationMode === 'lembrete' ? 'Horário do Lembrete' : 'Adicionar Lembrete (Opcional)'}
+              </label>
+              <input
+                type="datetime-local"
+                required={creationMode === 'lembrete'}
+                className="w-full px-3 py-2 border-2 border-indigo-100 dark:border-indigo-900/50 dark:bg-slate-800 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                value={formData.reminder || ''}
+                onChange={e => {
+                  setFormData({ ...formData, reminder: e.target.value });
+                }}
+              />
+              {creationMode === 'lembrete' && (
+                <p className="text-[10px] text-slate-400">O alerta será disparado no horário exato configurado.</p>
+              )}
+            </div>
+          )}
 
           {!taskToEdit && (
             <div className="flex items-center gap-2 pt-2 bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800/50">
@@ -514,7 +583,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={selectedCompanyIds.length === 0 || (creationMode === 'modelo' && selectedTemplateTaskIds.length === 0)}
+              disabled={(creationMode !== 'lembrete' && selectedCompanyIds.length === 0) || (creationMode === 'modelo' && selectedTemplateTaskIds.length === 0)}
               className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm shadow-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {taskToEdit ? 'Salvar Alterações' : creationMode === 'modelo' && selectedTemplateTaskIds.length > 0 ? 'Criar Tarefa com Atividades' : creationMode === 'lembrete' ? 'Salvar Lembrete' : 'Criar Tarefa'}

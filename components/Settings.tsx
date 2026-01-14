@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { Shield, ShieldAlert, Check, Users, Trash2, Plus, Briefcase, Layers, Lock, X, Edit2, Save, CheckSquare } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Shield, ShieldAlert, Check, Users, Trash2, Plus, Briefcase, Layers, Lock, X, Edit2, Save, CheckSquare, FileUp, Download } from 'lucide-react';
 import { Collaborator } from '../types';
 import { ADMIN_PASSWORD } from '../constants';
+import Papa from 'papaparse';
 
 interface SettingsProps {
   isManager: boolean; // Now acting as isAdminMode
@@ -26,6 +27,7 @@ interface SettingsProps {
   onUpdateTaskTemplate: (id: string, updates: any) => void;
   onUpdateTemplateTask: (templateId: string, taskId: string, updates: any) => void;
   onDeleteTemplateActivity: (templateId: string, taskId: string, activityId: string) => void;
+  onImportData: (data: any[]) => void;
 }
 
 export const Settings: React.FC<SettingsProps> = ({
@@ -50,8 +52,10 @@ export const Settings: React.FC<SettingsProps> = ({
   onAddTemplateActivity,
   onUpdateTaskTemplate,
   onUpdateTemplateTask,
-  onDeleteTemplateActivity
+  onDeleteTemplateActivity,
+  onImportData
 }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [newCollabName, setNewCollabName] = useState('');
   const [newCollabRole, setNewCollabRole] = useState(''); // Team
   const [newCollabEmail, setNewCollabEmail] = useState('');
@@ -100,6 +104,50 @@ export const Settings: React.FC<SettingsProps> = ({
     } else {
       setPasswordError(true);
     }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type === 'application/json') {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const json = JSON.parse(event.target?.result as string);
+          onImportData(Array.isArray(json) ? json : [json]);
+        } catch (err) {
+          alert('Erro ao processar arquivo JSON.');
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      // Assume CSV
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          onImportData(results.data);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        },
+        error: (err) => {
+          alert('Erro ao processar arquivo CSV.');
+        }
+      });
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const csvContent = "tipo,nome,equipes\nequipe,Squad Exemplo,\nempresa,Cliente Exemplo,\"Squad 1, Squad 2\"";
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "modelo_importacao.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleCollaboratorSubmit = (e: React.FormEvent) => {
@@ -279,7 +327,36 @@ export const Settings: React.FC<SettingsProps> = ({
               <Layers className="w-5 h-5 text-indigo-600" />
               Gerenciar Departamentos / Equipes
             </h3>
-            <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">{teams.length} equipes</span>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleDownloadTemplate}
+                className="text-xs font-medium text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors"
+                title="Baixar Modelo CSV"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Modelo</span>
+              </button>
+
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-4 py-1.5 rounded-xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-sm shadow-indigo-200/50"
+              >
+                <FileUp className="w-4 h-4" />
+                <span>Importar CSV/JSON</span>
+              </button>
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".csv,.json"
+                className="hidden"
+              />
+
+              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-lg">
+                {teams.length} Equipes
+              </span>
+            </div>
           </div>
 
           <div className="p-6">

@@ -41,9 +41,14 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
 
   const filteredTasks = tasks.filter(task => {
     const matchesAssignee = filterAssignee === 'all' || task.assigneeId === filterAssignee;
-    const matchesCompany = hideCompanyFilter || filterCompany === 'all' || task.companyId === filterCompany;
     const matchesSearch = task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       task.description.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Se for um lembrete (possui data de lembrete), ele ignora o filtro de empresa 
+    // e sempre aparece para os membros da equipe (regra de negócio solicitada).
+    if (task.reminder) return matchesAssignee && matchesSearch;
+
+    const matchesCompany = hideCompanyFilter || filterCompany === 'all' || task.companyId === filterCompany;
     return matchesAssignee && matchesSearch && matchesCompany;
   });
 
@@ -280,7 +285,10 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
                               )}
                               <div className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500">
                                 <Calendar className="w-3 h-3" />
-                                {new Date(task.dueDate).toLocaleDateString('pt-BR')}
+                                {(() => {
+                                  const [y, m, d] = task.dueDate.split('-').map(Number);
+                                  return new Date(y, m - 1, d).toLocaleDateString('pt-BR');
+                                })()}
                               </div>
                             </div>
 

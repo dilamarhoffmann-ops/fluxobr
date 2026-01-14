@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Task, Collaborator, Company, TaskStatus } from '../types';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, User, Building2, CheckCircle2, AlertCircle, PlusCircle, Bell } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, User, Building2, CheckCircle2, AlertCircle, PlusCircle, Bell, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface AgendaViewProps {
@@ -10,10 +10,11 @@ interface AgendaViewProps {
     companies: Company[];
     onViewTask?: (task: Task) => void;
     onAddClick?: (date: string, mode: 'nova' | 'lembrete') => void;
+    onDeleteTask?: (taskId: string) => void;
     isManager: boolean;
 }
 
-export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, companies, onViewTask, onAddClick, isManager }) => {
+export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, companies, onViewTask, onAddClick, onDeleteTask, isManager }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [selectedDay, setSelectedDay] = useState<Date | null>(null);
 
@@ -41,12 +42,32 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
         const endOfMonth = new Date(year, month + 1, 0);
 
         tasks.forEach(task => {
-            const taskStart = new Date(task.dueDate);
+            if (!task.dueDate) return;
+
+            let taskStart: Date;
+            const parsedDate = new Date(task.dueDate);
+
+            if (!isNaN(parsedDate.getTime())) {
+                taskStart = parsedDate;
+            } else {
+                const parts = task.dueDate.split('-');
+                if (parts.length === 3) {
+                    const [y, m, d] = parts.map(Number);
+                    if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
+                        taskStart = new Date(y, m - 1, d);
+                    } else return;
+                } else return;
+            }
+
             taskStart.setHours(0, 0, 0, 0);
 
             // Se não repete, adiciona apenas na data de vencimento
             if (!task.repeatFrequency || task.repeatFrequency === 'none') {
-                const dateStr = taskStart.toISOString().split('T')[0];
+                const year = taskStart.getFullYear();
+                const month = String(taskStart.getMonth() + 1).padStart(2, '0');
+                const day = String(taskStart.getDate()).padStart(2, '0');
+                const dateStr = `${year}-${month}-${day}`;
+
                 if (!map[dateStr]) map[dateStr] = [];
                 map[dateStr].push(task);
                 return;
@@ -73,9 +94,13 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
                     }
 
                     if (shouldShow) {
-                        const dateStr = currentDay.toISOString().split('T')[0];
-                        if (!map[dateStr]) map[dateStr] = [];
-                        map[dateStr].push(task);
+                        try {
+                            const dateStr = currentDay.toISOString().split('T')[0];
+                            if (!map[dateStr]) map[dateStr] = [];
+                            map[dateStr].push(task);
+                        } catch (e) {
+                            console.error('Error processing recurring task date:', e);
+                        }
                     }
                 }
                 tempDate.setDate(tempDate.getDate() + 1);
@@ -104,6 +129,19 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
         return days;
     }, [currentDate]);
 
+    const getSafeMonthName = (date: Date) => {
+        const month = date.getMonth();
+        return monthNames[month] || `Mês ${month + 1}`;
+    };
+
+    const getSafeDateStr = (date: Date) => {
+        try {
+            return date.toISOString().split('T')[0];
+        } catch (e) {
+            return '';
+        }
+    };
+
     const getStatusColor = (status: TaskStatus) => {
         switch (status) {
             case TaskStatus.DONE: return 'bg-emerald-500';
@@ -124,7 +162,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
                         </div>
                         <div>
                             <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 uppercase tracking-tighter">
-                                {monthNames[currentDate.getMonth()]} <span className="text-indigo-600">{currentDate.getFullYear()}</span>
+                                {getSafeMonthName(currentDate)} <span className="text-indigo-600">{currentDate.getFullYear()}</span>
                             </h2>
                             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Visualize sua rotina e prazos</p>
                         </div>
@@ -160,9 +198,11 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
                     {calendarDays.map((date, idx) => {
                         if (!date) return <div key={`empty-${idx}`} className="bg-white dark:bg-slate-800/40 min-h-[120px]" />;
 
-                        const dateStr = date.toISOString().split('T')[0];
+                        const dateStr = getSafeDateStr(date);
+                        if (!dateStr) return <div key={`empty-${idx}`} className="bg-white dark:bg-slate-800/40 min-h-[120px]" />;
+
                         const tasksOnDay = tasksByDay[dateStr] || [];
-                        const isToday = new Date().toISOString().split('T')[0] === dateStr;
+                        const isToday = getSafeDateStr(new Date()) === dateStr;
 
                         return (
                             <div
@@ -242,7 +282,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
                             <div className="p-8 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 flex justify-between items-center shrink-0">
                                 <div className="flex items-center gap-4">
                                     <div className="bg-white dark:bg-slate-700 w-14 h-14 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-600 flex flex-col items-center justify-center">
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{monthNames[selectedDay.getMonth()].slice(0, 3)}</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{getSafeMonthName(selectedDay).slice(0, 3)}</span>
                                         <span className="text-xl font-black text-indigo-600 leading-none">{selectedDay.getDate()}</span>
                                     </div>
                                     <div>
@@ -250,7 +290,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
                                             Agenda do Dia
                                         </h3>
                                         <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                                            {tasksByDay[selectedDay.toISOString().split('T')[0]]?.length || 0} tarefas programadas
+                                            {tasksByDay[getSafeDateStr(selectedDay)]?.length || 0} tarefas programadas
                                         </p>
                                     </div>
                                 </div>
@@ -260,7 +300,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
                                             <button
                                                 onClick={() => {
                                                     if (selectedDay) {
-                                                        onAddClick?.(selectedDay.toISOString().split('T')[0], 'lembrete');
+                                                        onAddClick?.(getSafeDateStr(selectedDay), 'lembrete');
                                                         setSelectedDay(null);
                                                     }
                                                 }}
@@ -272,7 +312,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
                                             <button
                                                 onClick={() => {
                                                     if (selectedDay) {
-                                                        onAddClick?.(selectedDay.toISOString().split('T')[0], 'nova');
+                                                        onAddClick?.(getSafeDateStr(selectedDay), 'nova');
                                                         setSelectedDay(null);
                                                     }
                                                 }}
@@ -293,73 +333,101 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-8 space-y-4 custom-scrollbar">
-                                {tasksByDay[selectedDay.toISOString().split('T')[0]]?.length > 0 ? (
-                                    tasksByDay[selectedDay.toISOString().split('T')[0]].map(task => {
-                                        const assignee = collaborators.find(c => c.id === task.assigneeId);
-                                        const company = companies.find(c => c.id === task.companyId);
+                                {(() => {
+                                    const dateStr = getSafeDateStr(selectedDay);
+                                    const dayTasks = tasksByDay[dateStr] || [];
 
-                                        return (
-                                            <div
-                                                key={task.id}
-                                                onClick={() => {
-                                                    onViewTask?.(task);
-                                                    setSelectedDay(null);
-                                                }}
-                                                className="bg-white dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group cursor-pointer"
-                                            >
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className={`w-3 h-3 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
-                                                        <h4 className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">
-                                                            {task.title}
-                                                        </h4>
+                                    if (dayTasks.length > 0) {
+                                        return dayTasks.map(task => {
+                                            const assignee = (collaborators || []).find(c => c.id === task.assigneeId);
+                                            const company = (companies || []).find(c => c.id === task.companyId);
+
+                                            return (
+                                                <div
+                                                    key={task.id}
+                                                    onClick={() => {
+                                                        onViewTask?.(task);
+                                                        setSelectedDay(null);
+                                                    }}
+                                                    className="bg-white dark:bg-slate-800/40 rounded-2xl p-5 border border-slate-100 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-xl hover:shadow-indigo-500/5 transition-all group cursor-pointer"
+                                                >
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-3 h-3 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
+                                                            <h4 className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">
+                                                                {task.title}
+                                                            </h4>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-tighter ${task.status === TaskStatus.DONE ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                                task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                                                                    'bg-slate-50 text-slate-600 border-slate-100'
+                                                                }`}>
+                                                                {task.status}
+                                                            </span>
+                                                            {isManager && onDeleteTask && (
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        onDeleteTask(task.id);
+                                                                        setSelectedDay(null); // Close modal after delete attempt or stay? Usually better to close or refresh.
+                                                                    }}
+                                                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                                    title="Excluir"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-tighter ${task.status === TaskStatus.DONE ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                            task.status === TaskStatus.IN_PROGRESS ? 'bg-blue-50 text-blue-600 border-blue-100' :
-                                                                'bg-slate-50 text-slate-600 border-slate-100'
-                                                            }`}>
-                                                            {task.status}
-                                                        </span>
-                                                    </div>
-                                                </div>
 
-                                                <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 line-clamp-2 italic">
-                                                    {task.description || 'Sem descrição detalhada.'}
-                                                </p>
+                                                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-6 line-clamp-2 italic">
+                                                        {task.description || 'Sem descrição detalhada.'}
+                                                    </p>
 
-                                                <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-slate-50 dark:border-slate-700/50">
-                                                    {company && (
+                                                    <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-slate-50 dark:border-slate-700/50">
+                                                        {company && (
+                                                            <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                                                <Building2 className="w-3.5 h-3.5" />
+                                                                {company.name}
+                                                            </div>
+                                                        )}
                                                         <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                                                            <Building2 className="w-3.5 h-3.5" />
-                                                            {company.name}
+                                                            <User className="w-3.5 h-3.5" />
+                                                            {assignee?.name}
                                                         </div>
-                                                    )}
-                                                    <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                                                        <User className="w-3.5 h-3.5" />
-                                                        {assignee?.name}
+                                                        {task.reminder && (
+                                                            <div className="flex items-center gap-2 text-[11px] font-bold text-indigo-500 uppercase tracking-wider">
+                                                                <Clock className="w-3.5 h-3.5" />
+                                                                {(() => {
+                                                                    try {
+                                                                        const rDate = new Date(task.reminder);
+                                                                        if (isNaN(rDate.getTime())) return '--:--';
+                                                                        return rDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                                                    } catch (e) {
+                                                                        return '--:--';
+                                                                    }
+                                                                })()}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    {task.reminder && (
-                                                        <div className="flex items-center gap-2 text-[11px] font-bold text-indigo-500 uppercase tracking-wider">
-                                                            <Clock className="w-3.5 h-3.5" />
-                                                            {new Date(task.reminder).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                        </div>
-                                                    )}
                                                 </div>
+                                            );
+                                        });
+                                    }
+
+                                    return (
+                                        <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 opacity-50">
+                                            <div className="bg-slate-100 dark:bg-slate-800 p-6 rounded-full">
+                                                <CheckCircle2 className="w-12 h-12 text-slate-400" />
                                             </div>
-                                        );
-                                    })
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-20 text-center space-y-4 opacity-50">
-                                        <div className="bg-slate-100 dark:bg-slate-800 p-6 rounded-full">
-                                            <CheckCircle2 className="w-12 h-12 text-slate-400" />
+                                            <div>
+                                                <p className="font-bold text-slate-500 dark:text-slate-300">Nenhuma tarefa para este dia</p>
+                                                <p className="text-xs text-slate-400">Aproveite para relaxar ou planejar sua semana!</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <p className="font-bold text-slate-500 dark:text-slate-300">Nenhuma tarefa para este dia</p>
-                                            <p className="text-xs text-slate-400">Aproveite para relaxar ou planejar sua semana!</p>
-                                        </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
                             </div>
                         </motion.div>
                     </div>

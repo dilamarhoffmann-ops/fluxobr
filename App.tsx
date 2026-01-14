@@ -18,6 +18,7 @@ import { useAuth } from './hooks/useAuth';
 import { db } from './lib/supabase';
 import { TaskDetailsModal } from './components/TaskDetailsModal';
 import { AgendaView } from './components/AgendaView';
+import { ReminderNotificationModal } from './components/ReminderNotificationModal';
 
 enum Tab {
   DASHBOARD = 'dashboard',
@@ -76,7 +77,7 @@ const App: React.FC = () => {
     status: data.status as TaskStatus,
     priority: data.priority,
     assigneeId: data.assignee_id,
-    companyId: data.company_id,
+    companyId: data.company_id || '', // Garantir string vazia se for null
     dueDate: data.due_date,
     createdAt: data.created_at,
     startedAt: data.started_at,
@@ -261,11 +262,14 @@ const App: React.FC = () => {
     const colabRoleMap = new Map(collaborators.map(c => [c.id, c.role.trim().toLowerCase()]));
 
     return tasks.filter(t => {
-      // Regra 1: Empresa vinculada ao meu time
-      if (t.companyId && allowedCompanyIds.has(t.companyId)) return true;
-
-      // Regra 2: Sou o responsável ou o criador
+      // Regra 0 (Prioridade Máxima): Se sou o CRIADOR ou RESPONSÁVEL, eu sempre vejo.
+      // Isso garante que o usuário nunca perca de vista o que ele mesmo fez ou o que é dele.
       if (t.assigneeId === currentUserProfile.id || t.creatorId === currentUserProfile.id) return true;
+
+      // Regra 1: REMOVIDA
+      // A visualização deve ser vinculada ao MEMBRO/TIME, não apenas à empresa de forma genérica.
+      // Isso evita que Squads diferentes que atendem a mesma empresa vejam as tarefas uns dos outros.
+      // if (t.companyId && allowedCompanyIds.has(t.companyId)) return true;
 
       // Regra 3: Atribuído a alguém da minha equipe (mesmo squad)
       if (t.assigneeId) {
@@ -273,13 +277,34 @@ const App: React.FC = () => {
         if (assigneeRole === userTeam) return true;
       }
 
+      // Regra 4: Criado por alguém da minha equipe (mesmo squad)
+      // Fundamental para lembretes da equipe que ainda não foram atribuídos
+      if (t.creatorId) {
+        const creatorRole = colabRoleMap.get(t.creatorId);
+        if (creatorRole === userTeam) return true;
+      }
+
+      // Regra 5: É um lembrete (não depende de empresa, exibição baseada em equipe já coberta acima, mas reforçando)
+      // Regra 5: É um lembrete (não depende de empresa, exibição baseada em equipe já coberta acima, mas reforçando)
+      if (t.reminder) {
+        // Removida visibilidade global de Gestor para evitar vazamento entre Squads
+        return false;
+      }
+
       return false;
     });
   }, [tasks, isAdminMode, currentUserProfile, filteredCompanies, collaborators]);
 
   const filteredCollaborators = useMemo(() => {
-    return collaborators;
-  }, [collaborators]);
+    if (!currentUserProfile) return [];
+
+    // Admins veem todos
+    if (currentUserProfile.accessLevel === 'admin') return collaborators;
+
+    // Gestores e Colaboradores veem apenas membros do MESMO TIME/SQUAD
+    const userTeam = currentUserProfile.role.trim().toLowerCase();
+    return collaborators.filter(c => c.role.trim().toLowerCase() === userTeam);
+  }, [collaborators, currentUserProfile]);
 
   const metrics = useMemo(() => {
     const targetTasks = filteredTasks;
@@ -439,7 +464,10 @@ const App: React.FC = () => {
       const now = new Date().toISOString();
 
       taskInputs.forEach(taskInput => {
-        targetCompanyIds.forEach((companyId) => {
+        // Se targetCompanyIds estiver vazio (comum em lembretes), criamos pelo menos uma entrada com null
+        const companiesToProcess = targetCompanyIds.length > 0 ? targetCompanyIds : [null];
+
+        companiesToProcess.forEach((companyId) => {
           if (replicateToAllMembers) {
             filteredCollaborators.forEach((collab) => {
               tasksToAdd.push({
@@ -599,6 +627,68 @@ const App: React.FC = () => {
         alert(`Erro ao salvar equipe no banco: ${error.message}`);
       }
     }
+  };
+
+  const handleImportData = async (importedItems: any[]) => {
+    let successCount = 0;
+    let errorCount = 0;
+
+    // Filter out duplicates in teams locally first for efficiency
+    const existingTeams = new Set(teams);
+
+    for (const item of importedItems) {
+      const type = (item.tipo || item.type || '').toString().toLowerCase().trim();
+      const name = (item.nome || item.name || '').toString().trim();
+
+      if (!name) continue;
+
+      try {
+        if (type === 'equipe' || type === 'team') {
+          if (!existingTeams.has(name)) {
+            const { error } = await db.insert('teams', { name });
+            if (!error) {
+              setTeams(prev => [...prev, name]);
+              existingTeams.add(name);
+              successCount++;
+            } else {
+              console.error(`Error importing team ${name}:`, error);
+              errorCount++;
+            }
+          }
+        } else if (type === 'empresa' || type === 'company') {
+          let teamsToLink: string[] = [];
+          const squadsVal = item.equipes || item.teams || item.team || item.squads;
+
+          if (Array.isArray(squadsVal)) {
+            teamsToLink = squadsVal.map(s => s.toString().trim());
+          } else if (typeof squadsVal === 'string' && squadsVal) {
+            teamsToLink = squadsVal.split(',').map(s => s.trim()).filter(s => s);
+          }
+
+          const colors = ['bg-blue-600', 'bg-green-600', 'bg-red-500', 'bg-purple-600', 'bg-orange-500', 'bg-indigo-600'];
+          const randomColor = colors[Math.floor(Math.random() * colors.length)];
+
+          const { data, error } = await db.insert('companies', {
+            name,
+            team: JSON.stringify(teamsToLink),
+            logo: randomColor
+          });
+
+          if (!error && data) {
+            setCompanies(prev => [...prev, mapCompanyFromDB(data[0])]);
+            successCount++;
+          } else {
+            console.error(`Error importing company ${name}:`, error);
+            errorCount++;
+          }
+        }
+      } catch (err) {
+        console.error('Unexpected error during import item processing:', err);
+        errorCount++;
+      }
+    }
+
+    alert(`Importação concluída!\nSucessos: ${successCount}\nErros: ${errorCount}`);
   };
 
   const handleAddAuthorizedEmail = async (email: string, fullName: string, role: string, isManager: boolean, accessLevel?: string) => {
@@ -873,6 +963,7 @@ const App: React.FC = () => {
                     companies={filteredCompanies}
                     onViewTask={handleViewTask}
                     onAddClick={(date, mode) => handleOpenCreateModal(date, mode)}
+                    onDeleteTask={handleDeleteTask}
                     isManager={currentUserProfile?.accessLevel === 'admin' || currentUserProfile?.accessLevel === 'gestor'}
                   />
                 )}
@@ -919,6 +1010,7 @@ const App: React.FC = () => {
                     onUpdateTaskTemplate={handleUpdateTaskTemplate}
                     onUpdateTemplateTask={handleUpdateTemplateTask}
                     onDeleteTemplateActivity={handleDeleteTemplateActivity}
+                    onImportData={handleImportData}
                   />
                 )}
                 {activeTab === Tab.FAQ && isAdminMode && (
@@ -959,6 +1051,19 @@ const App: React.FC = () => {
         task={viewingTask}
         onClose={() => setViewingTask(null)}
         onToggleActivity={handleToggleChecklistItem}
+      />
+
+      <ReminderNotificationModal
+        isOpen={notifications.length > 0}
+        tasks={notifications}
+        onClose={() => setNotifications([])}
+        onViewTask={(task) => {
+          setViewingTask(task);
+          setNotifications(prev => prev.filter(t => t.id !== task.id));
+        }}
+        onDismiss={(taskId) => {
+          setNotifications(prev => prev.filter(t => t.id !== taskId));
+        }}
       />
     </div>
   );
