@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
-import { HelpCircle, ChevronRight, BookOpen, Plus, Trash2, Edit2, Save, X, ExternalLink, FileText, FileUp, Paperclip } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { HelpCircle, ChevronRight, BookOpen, Plus, Trash2, Edit2, Save, X, ExternalLink, FileText, FileUp, Paperclip, Link, Copy, Check, Loader2 } from 'lucide-react';
 import { FAQItem } from '../types';
+import { storage } from '../lib/supabase';
 
 interface FAQManagerProps {
   faqs: FAQItem[];
@@ -13,6 +14,42 @@ interface FAQManagerProps {
 export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, onDelete }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [copiedLink, setCopiedLink] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<any[]>([]);
+  const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
+
+  const loadAttachments = async () => {
+    setIsLoadingAttachments(true);
+    try {
+      const { data, error } = await storage.list('task-attachments');
+      if (error) throw error;
+      if (data) {
+        setAttachments(data.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+      }
+    } catch (err) {
+      console.error("Erro ao carregar anexos:", err);
+    } finally {
+      setIsLoadingAttachments(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAttachments();
+  }, []);
+
+  const handleDeleteAttachment = async (fileName: string) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o arquivo "${fileName}"?`)) return;
+
+    try {
+      const { error } = await storage.remove('task-attachments', [fileName]);
+      if (error) throw error;
+      setAttachments(prev => prev.filter(a => a.name !== fileName));
+    } catch (err) {
+      console.error("Erro ao excluir anexo:", err);
+      alert("Erro ao excluir documento.");
+    }
+  };
 
   // Form State
   const [formData, setFormData] = useState({ question: '', answer: '', url: '', pdfUrl: '' });
@@ -34,22 +71,44 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
     setIsAdding(false);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type === 'application/pdf') {
-      if (file.size > 2 * 1024 * 1024) {
-        alert("O arquivo é muito grande. O limite é 2MB para armazenamento local.");
-        return;
-      }
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData({ ...formData, pdfUrl: reader.result as string });
-      };
-      reader.readAsDataURL(file);
-    } else if (file) {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
       alert("Por favor, selecione apenas arquivos PDF.");
+      return;
     }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      alert("O arquivo é muito grande. O limite é 5MB.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `faq-${Date.now()}-${cleanName}`;
+
+      const { error } = await storage.upload('task-attachments', fileName, file);
+      if (error) throw error;
+
+      const publicUrl = storage.getPublicUrl('task-attachments', fileName);
+      setFormData({ ...formData, pdfUrl: publicUrl });
+      loadAttachments(); // Refresh list after upload
+    } catch (err) {
+      console.error("Erro no upload", err);
+      alert("Falha ao enviar o arquivo.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedLink(text);
+    setTimeout(() => setCopiedLink(null), 2000);
   };
 
   const removeFile = () => {
@@ -133,18 +192,40 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
               </label>
 
               {formData.pdfUrl ? (
-                <div className="flex items-center justify-between bg-white p-2 rounded border border-indigo-100">
-                  <div className="flex items-center gap-2 text-indigo-600">
-                    <FileText className="w-4 h-4" />
-                    <span className="text-xs font-medium">Documento anexado</span>
+                <div className="flex flex-col gap-2 bg-indigo-50/50 p-3 rounded border border-indigo-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-indigo-600 truncate">
+                      <FileText className="w-4 h-4 shrink-0" />
+                      <a href={formData.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium hover:underline truncate max-w-[200px]">
+                        Visualizar PDF
+                      </a>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={removeFile}
+                      className="text-red-500 hover:text-red-700 p-1"
+                      title="Remover anexo"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={removeFile}
-                    className="text-red-500 hover:text-red-700 p-1"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+
+                  <div className="flex items-center gap-2 mt-1">
+                    <input
+                      type="text"
+                      readOnly
+                      value={formData.pdfUrl}
+                      className="flex-1 text-[10px] text-slate-500 bg-white border border-slate-200 rounded px-2 py-1 select-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(formData.pdfUrl)}
+                      className="p-1.5 bg-white border border-slate-200 rounded hover:bg-slate-50 text-slate-500 hover:text-indigo-600 transition-colors"
+                      title="Copiar Link"
+                    >
+                      {copiedLink === formData.pdfUrl ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="relative">
@@ -152,11 +233,21 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                     type="file"
                     accept=".pdf"
                     onChange={handleFileChange}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    disabled={isUploading}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                   />
                   <div className="flex items-center justify-center gap-2 py-4 border border-dashed border-slate-300 rounded-lg bg-white text-slate-500 hover:text-indigo-600 hover:border-indigo-300 transition-colors">
-                    <FileUp className="w-5 h-5" />
-                    <span className="text-sm">Clique para subir PDF (Máx 2MB)</span>
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
+                        <span className="text-sm text-indigo-500">Enviando PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileUp className="w-5 h-5" />
+                        <span className="text-sm">Clique para subir PDF (Máx 5MB)</span>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -216,9 +307,19 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                 )}
                 {faq.pdfUrl && (
                   <div className="mt-2 flex items-center gap-2">
-                    <span className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-[10px] font-bold uppercase tracking-wider">
-                      <FileText className="w-3 h-3" /> Possui PDF anexado
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-[10px] font-bold uppercase tracking-wider">
+                        <FileText className="w-3 h-3" /> PDF Anexado
+                      </span>
+                      <button
+                        onClick={() => copyToClipboard(faq.pdfUrl!)}
+                        className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-indigo-600 px-2 py-1 rounded hover:bg-slate-100 transition-colors"
+                        title="Copiar Link do PDF"
+                      >
+                        {copiedLink === faq.pdfUrl ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                        {copiedLink === faq.pdfUrl ? 'Copiado!' : 'Copiar Link'}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -234,6 +335,97 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
           </div>
         )}
       </div>
-    </div>
+
+      {/* Attached Documents Section */}
+      <div className="mt-12 pt-8 border-t border-slate-200">
+        <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+          <Paperclip className="w-5 h-5 text-indigo-600" />
+          Documentos Anexados
+        </h3>
+
+        {isLoadingAttachments ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+          </div>
+        ) : attachments.length === 0 ? (
+          <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+            <p className="text-slate-500">Nenhum documento anexado encontrado.</p>
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="px-6 py-4 font-semibold text-slate-700">Nome do Arquivo</th>
+                    <th className="px-6 py-4 font-semibold text-slate-700">Data de Envio</th>
+                    <th className="px-6 py-4 font-semibold text-slate-700">Tamanho</th>
+                    <th className="px-6 py-4 font-semibold text-slate-700 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {attachments.map((file) => {
+                    const publicUrl = storage.getPublicUrl('task-attachments', file.name);
+                    return (
+                      <tr key={file.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-red-50 p-2 rounded text-red-600">
+                              <FileText className="w-4 h-4" />
+                            </div>
+                            <span className="font-medium text-slate-700 truncate max-w-[300px]" title={file.name}>
+                              {file.name}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-500">
+                          {new Date(file.created_at).toLocaleDateString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </td>
+                        <td className="px-6 py-4 text-slate-500">
+                          {(file.metadata?.size / 1024 / 1024).toFixed(2)} MB
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <a
+                              href={publicUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                              title="Visualizar"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                            <button
+                              onClick={() => copyToClipboard(publicUrl)}
+                              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded transition-colors"
+                              title="Copiar Link"
+                            >
+                              {copiedLink === publicUrl ? <Check className="w-4 h-4 text-emerald-500" /> : <Link className="w-4 h-4" />}
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAttachment(file.name)}
+                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Excluir"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    </div >
   );
 };

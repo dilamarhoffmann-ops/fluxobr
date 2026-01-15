@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Task, Collaborator, TaskStatus, TaskPriority, Company, FAQItem } from '../types';
-import { Filter, Search, User, Calendar, PlusCircle, Trash2, Clock, Building2, HelpCircle, Edit2, GripVertical, Check } from 'lucide-react';
+import { Filter, Search, User, Calendar, PlusCircle, Trash2, Clock, Building2, HelpCircle, Edit2, GripVertical, Check, Paperclip } from 'lucide-react';
 import { FAQViewModal } from './FAQViewModal';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 
@@ -300,6 +300,18 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
                                 >
                                   <HelpCircle className="w-4 h-4" />
                                 </button>
+                              )}
+                              {task.attachmentUrl && (
+                                <a
+                                  href={task.attachmentUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-colors group/att"
+                                  title="Ver anexo PDF"
+                                >
+                                  <Paperclip className="w-4 h-4" />
+                                </a>
                               )}
                               <img src={assignee?.avatar} alt={assignee?.name} title={assignee?.name} className="w-7 h-7 rounded-full ring-2 ring-white dark:ring-slate-800 shadow-sm" />
                             </div>

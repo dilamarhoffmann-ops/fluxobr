@@ -135,4 +135,10 @@ export const storage = {
         const { data, error } = await supabase.storage.from(bucket).remove(paths);
         return { data, error };
     },
+
+    // List files
+    list: async (bucket: string, path: string = '', options?: any) => {
+        const { data, error } = await supabase.storage.from(bucket).list(path, options);
+        return { data, error };
+    },
 };

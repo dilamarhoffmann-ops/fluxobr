@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Calendar, User, Flag, Type, Building2, CheckSquare, Link as LinkIcon, HelpCircle, Users, Bell, Clock, PlusCircle, Layers, RefreshCw } from 'lucide-react';
+import { X, Calendar, User, Flag, Type, Building2, CheckSquare, Link as LinkIcon, HelpCircle, Users, Bell, Clock, PlusCircle, Layers, RefreshCw, Upload } from 'lucide-react';
 import { Collaborator, TaskInput, TaskPriority, TaskStatus, Company, FAQItem, Task } from '../types';
+import { storage } from '../lib/supabase';
 
 interface CreateTaskModalProps {
   isOpen: boolean;
@@ -48,6 +49,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
   const [selectedCompanyIds, setSelectedCompanyIds] = useState<string[]>(companies.length > 0 ? [companies[0].id] : []);
   const [replicateToAllMembers, setReplicateToAllMembers] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   // Pre-fill form if editing
   useEffect(() => {
@@ -67,6 +70,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       });
       setSelectedCompanyIds([taskToEdit.companyId]);
       setReplicateToAllMembers(false);
+      setSelectedFile(null); // Reset file
     } else {
       setFormData({
         title: '',
@@ -83,13 +87,37 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       setSelectedCompanyIds(companies.length > 0 ? [companies[0].id] : []);
       setReplicateToAllMembers(false);
       setCreationMode(initialMode);
+      setSelectedFile(null); // Reset file
     }
   }, [isOpen, taskToEdit, initialMode]); // Only reset when modal opens or editing task changes
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    let uploadedFileUrl = '';
+
+    // Upload de Arquivo
+    if (selectedFile) {
+      if (isUploading) return; // Evita duplo clique
+      setIsUploading(true);
+      try {
+        const cleanName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const fileName = `${Date.now()}-${cleanName}`;
+
+        const { error } = await storage.upload('task-attachments', fileName, selectedFile);
+        if (error) throw error;
+
+        uploadedFileUrl = storage.getPublicUrl('task-attachments', fileName);
+      } catch (err) {
+        console.error('Erro no upload', err);
+        alert('Falha ao enviar o arquivo anexo. Tente novamente.');
+        setIsUploading(false);
+        return;
+      }
+      setIsUploading(false);
+    }
 
     if (creationMode === 'modelo' && selectedTemplateTaskIds.length > 0) {
       // Modo template: criar UMA tarefa com todas as atividades agregadas
@@ -136,6 +164,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         faqId: formData.faqId,
         reminder: formData.reminder,
         checklist: allActivities,
+        attachmentUrl: uploadedFileUrl || undefined,
       };
 
       console.log('Criando tarefa única do template:', singleTask);
@@ -154,8 +183,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         return;
       }
 
-      if (isReminder && !formData.reminder) {
-        alert('Por favor, defina a data e hora do lembrete.');
+      if (isReminder && !formData.dueDate) {
+        alert('Por favor, defina o Prazo (Data e Hora) para o lembrete.');
         return;
       }
 
@@ -163,6 +192,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         alert('Por favor, selecione pelo menos uma empresa.');
         return;
       }
+
 
 
       // Normalização de Datas para ISO UTC
@@ -176,35 +206,31 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           finalDueDate = new Date(finalDueDate).toISOString();
         } catch (e) {
           console.error("Erro ao converter data", e);
-          // Fallback para evitar crash
           finalDueDate = new Date().toISOString();
         }
       }
 
-      let finalReminder = formData.reminder ? new Date(formData.reminder).toISOString() : '';
-
+      // Lógica Unificada: O Lembrete SEMPRE segue o Prazo (dueDate), se estivermos no modo Lembrete
       const taskData = isReminder
         ? {
           ...formData,
           dueDate: finalDueDate,
-          reminder: finalReminder || null,
+          reminder: finalDueDate || null, // Lembrete = Prazo
           status: TaskStatus.PENDING,
           priority: TaskPriority.MEDIUM,
-          checklist: []
+          checklist: [],
+          attachmentUrl: uploadedFileUrl || undefined
         }
         : {
           ...formData,
           dueDate: finalDueDate,
-          reminder: finalReminder || null,
-          checklist: formData.checklist || []
+          reminder: null,
+          checklist: formData.checklist || [],
+          attachmentUrl: uploadedFileUrl || undefined
         };
 
-      // Se for lembrete e nenhuma empresa selecionada, enviamos um array vazio
-      // O App.tsx lidará com a criação sem empresa se o array estiver vazio
       onSave(taskData, selectedCompanyIds, replicateToAllMembers);
     }
-
-    onClose();
   };
 
   const toggleCompany = (companyId: string) => {
@@ -537,26 +563,44 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             </div>
           </div>
 
-          {(creationMode === 'lembrete' || creationMode === 'nova') && (
-            <div className={`space-y-1 animate-in slide-in-from-top-1 ${creationMode === 'lembrete' ? '' : 'mt-4 border-t pt-4 border-slate-100 dark:border-slate-800'}`}>
-              <label className="text-sm font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
-                <Bell className="w-4 h-4" />
-                {creationMode === 'lembrete' ? 'Horário do Lembrete' : 'Adicionar Lembrete (Opcional)'}
+
+
+          <div className="space-y-1 mt-4">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+              <Upload className="w-4 h-4 text-slate-400" /> Anexar Documento (PDF)
+            </label>
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer flex items-center justify-center px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors w-full bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300">
+                <input
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={e => {
+                    if (e.target.files && e.target.files[0]) {
+                      setSelectedFile(e.target.files[0]);
+                    }
+                  }}
+                />
+                <div className="flex items-center gap-2">
+                  {selectedFile ? (
+                    <span className="text-indigo-600 font-semibold truncate max-w-[200px]">{selectedFile.name}</span>
+                  ) : (
+                    <span className="text-sm">Clique para selecionar um arquivo PDF</span>
+                  )}
+                </div>
               </label>
-              <input
-                type="datetime-local"
-                required={creationMode === 'lembrete'}
-                className="w-full px-3 py-2 border-2 border-indigo-100 dark:border-indigo-900/50 dark:bg-slate-800 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                value={formData.reminder || ''}
-                onChange={e => {
-                  setFormData({ ...formData, reminder: e.target.value });
-                }}
-              />
-              {creationMode === 'lembrete' && (
-                <p className="text-[10px] text-slate-400">O alerta será disparado no horário exato configurado.</p>
+              {selectedFile && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedFile(null)}
+                  className="p-2 text-slate-400 hover:text-red-500"
+                  title="Remover anexo"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               )}
             </div>
-          )}
+          </div>
 
           {!taskToEdit && (
             <div className="flex items-center gap-2 pt-2 bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800/50">
@@ -590,7 +634,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };

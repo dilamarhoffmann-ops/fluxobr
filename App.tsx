@@ -15,10 +15,11 @@ import { SmartInsights } from './components/SmartInsights';
 import { MenuVertical } from './components/ui/menu-vertical';
 import { ThemeToggle } from './components/ThemeToggle';
 import { useAuth } from './hooks/useAuth';
-import { db } from './lib/supabase';
+import { db, supabase } from './lib/supabase';
 import { TaskDetailsModal } from './components/TaskDetailsModal';
 import { AgendaView } from './components/AgendaView';
 import { ReminderNotificationModal } from './components/ReminderNotificationModal';
+import { ForceChangePasswordModal } from './components/ForceChangePasswordModal';
 
 enum Tab {
   DASHBOARD = 'dashboard',
@@ -87,6 +88,7 @@ const App: React.FC = () => {
     checklist: data.checklist || [],
     repeatFrequency: data.repeat_frequency || 'none',
     creatorId: data.creator_id,
+    attachmentUrl: data.attachment_url,
   });
 
   const mapCompanyFromDB = (data: any): Company => {
@@ -128,6 +130,7 @@ const App: React.FC = () => {
     role: data.role || 'Membro',
     isManager: data.is_manager,
     accessLevel: data.access_level || 'colaborador',
+    mustChangePassword: data.must_change_password
   });
 
   // Load Initial Data
@@ -453,6 +456,7 @@ const App: React.FC = () => {
         reminder: taskInput.reminder || null,
         checklist: taskInput.checklist || [],
         repeat_frequency: taskInput.repeatFrequency || 'none',
+        attachment_url: taskInput.attachmentUrl || null,
       };
 
       const { error } = await db.update('tasks', editingTask.id, dbTask);
@@ -483,7 +487,8 @@ const App: React.FC = () => {
                 reminder: taskInput.reminder || null,
                 checklist: taskInput.checklist || [],
                 repeat_frequency: taskInput.repeatFrequency || 'none',
-                started_at: taskInput.status === TaskStatus.IN_PROGRESS ? now : null
+                started_at: taskInput.status === TaskStatus.IN_PROGRESS ? now : null,
+                attachment_url: taskInput.attachmentUrl || null,
               });
             });
           } else {
@@ -497,6 +502,7 @@ const App: React.FC = () => {
               company_id: companyId,
               creator_id: authUser?.id,
               faq_id: taskInput.faqId || null,
+              attachment_url: taskInput.attachmentUrl || null,
               reminder: taskInput.reminder || null,
               checklist: taskInput.checklist || [],
               repeat_frequency: taskInput.repeatFrequency || 'none',
@@ -849,6 +855,61 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdatePassword = async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) {
+      alert('Erro ao atualizar senha: ' + error.message);
+    } else {
+      alert('Senha atualizada com sucesso!');
+    }
+  };
+
+  const handleAdminResetPassword = async (userId: string) => {
+    // Note: This requires a specific RPC function to be created in Supabase to work securely.
+    // The RPC should also set must_change_password = true in profiles table.
+
+    // Attempting to call the RPC function 'reset_user_password'
+    const { error } = await supabase.rpc('reset_user_password', { target_user_id: userId });
+
+    if (error) {
+      console.error('Error resetting password:', error);
+      // Fallback message if RPC is not set up
+      if (error.message.includes('function') && error.message.includes('does not exist')) {
+        alert('Erro: A função de redefinição administrativa não está configurada no banco de dados.\n\nPor favor, execute o script SQL fornecido na documentação para criar a função "reset_user_password".');
+      } else {
+        alert(`Erro ao redefinir senha: ${error.message}`);
+      }
+    } else {
+      // Optimistically update the local state if possible, though strict sync comes from DB
+      alert('Senha do usuário redefinida com sucesso para "123mudar". O usuário será solicitado a alterar a senha no próximo login.');
+    }
+  };
+
+  const handleForceUpdatePassword = async (password: string) => {
+    if (!authUser) return;
+
+    // 1. Update Password in Auth
+    const { error: authError } = await supabase.auth.updateUser({ password });
+    if (authError) {
+      alert('Erro ao atualizar senha: ' + authError.message);
+      return;
+    }
+
+    // 2. Update 'must_change_password' flag in profiles
+    const { error: profileError } = await db.update('profiles', authUser.id, { must_change_password: false });
+
+    if (profileError) {
+      console.error('Error updating profile flag:', profileError);
+      // We continue anyway since password IS changed.
+    }
+
+    alert('Senha atualizada com sucesso!');
+    // Update local profile state
+    if (currentUserProfile) {
+      setCurrentUserProfile({ ...currentUserProfile, mustChangePassword: false });
+    }
+  };
+
   const getDeleteModalInfo = () => {
     switch (deleteConfirmation.type) {
       case 'task': return { title: 'Excluir Tarefa', description: 'Tem certeza que deseja excluir esta tarefa?' };
@@ -882,7 +943,8 @@ const App: React.FC = () => {
                 { label: 'Agenda', href: Tab.AGENDA, icon: <Calendar className="w-5 h-5" /> },
                 { label: 'Empresas', href: Tab.COMPANIES, icon: <Building2 className="w-5 h-5" /> },
                 ...(isAdminMode ? [{ label: 'FAQ Gestor', href: Tab.FAQ, icon: <HelpCircle className="w-5 h-5" /> }] : []),
-                ...(currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor' ? [{ label: 'Configurações', href: Tab.SETTINGS, icon: <SettingsIcon className="w-5 h-5" /> }] : []),
+                // Configurações restritas APENAS para ADMIN
+                ...(currentUser.accessLevel === 'admin' ? [{ label: 'Configurações', href: Tab.SETTINGS, icon: <SettingsIcon className="w-5 h-5" /> }] : []),
               ]}
             />
           </nav>
@@ -1011,6 +1073,8 @@ const App: React.FC = () => {
                     onUpdateTemplateTask={handleUpdateTemplateTask}
                     onDeleteTemplateActivity={handleDeleteTemplateActivity}
                     onImportData={handleImportData}
+                    onUpdatePassword={handleUpdatePassword}
+                    onAdminResetPassword={handleAdminResetPassword}
                   />
                 )}
                 {activeTab === Tab.FAQ && isAdminMode && (
@@ -1065,6 +1129,12 @@ const App: React.FC = () => {
           setNotifications(prev => prev.filter(t => t.id !== taskId));
         }}
       />
+      {currentUserProfile?.mustChangePassword && (
+        <ForceChangePasswordModal
+          onUpdatePassword={handleForceUpdatePassword}
+          isLoading={dataLoading} // Reusing dataLoading or could make a specific loading state
+        />
+      )}
     </div>
   );
 };

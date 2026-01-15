@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { Eye, EyeOff } from 'lucide-react';
 
 interface SupabaseLoginProps {
     onLoginSuccess?: () => void;
@@ -9,6 +10,7 @@ export const SupabaseLogin: React.FC<SupabaseLoginProps> = ({ onLoginSuccess }) 
     const { user, loading, signIn, signUp, signOut } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [fullName, setFullName] = useState('');
     const [isSignUp, setIsSignUp] = useState(false);
     const [error, setError] = useState('');
@@ -54,7 +56,13 @@ export const SupabaseLogin: React.FC<SupabaseLoginProps> = ({ onLoginSuccess }) 
                 }
             }
         } catch (err: any) {
-            setError(err.message || 'Ocorreu um erro. Tente novamente.');
+            let message = err.message || 'Ocorreu um erro. Tente novamente.';
+            if (message.includes('User already registered')) {
+                message = 'Este e-mail já está cadastrado.';
+            } else if (message.includes('Invalid login credentials')) {
+                message = 'Credenciais inválidas. Verifique seu e-mail e senha.';
+            }
+            setError(message);
         }
     };
 
@@ -76,39 +84,11 @@ export const SupabaseLogin: React.FC<SupabaseLoginProps> = ({ onLoginSuccess }) 
         );
     }
 
+    // Se o usuário já estiver logado (user existe), este componente não deveria estar visível
+    // ou deveria redirecionar. O App.tsx controla isso.
+    // Se por acaso renderizar e user existir, não mostramos nada para não causar flash.
     if (user) {
-        return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-cyan-500 p-6">
-                <div className="bg-white p-10 rounded-2xl shadow-2xl max-w-md w-full">
-                    <div className="text-center mb-6">
-                        <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-                            <span className="text-white text-3xl font-bold">
-                                {user.email?.charAt(0).toUpperCase()}
-                            </span>
-                        </div>
-                        <h2 className="text-2xl font-bold text-slate-800 mb-2">Bem-vindo!</h2>
-                        <p className="text-slate-600">{user.email}</p>
-                    </div>
-
-                    <div className="bg-slate-50 p-4 rounded-lg mb-6">
-                        <p className="text-sm text-slate-600">
-                            <strong>ID:</strong> {user.id.substring(0, 8)}...
-                        </p>
-                        <p className="text-sm text-slate-600 mt-2">
-                            <strong>Criado em:</strong>{' '}
-                            {new Date(user.created_at).toLocaleDateString('pt-BR')}
-                        </p>
-                    </div>
-
-                    <button
-                        onClick={handleSignOut}
-                        className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-lg font-semibold hover:from-red-600 hover:to-red-700 transition-all shadow-lg"
-                    >
-                        Sair
-                    </button>
-                </div>
-            </div>
-        );
+        return null;
     }
 
     return (
@@ -171,15 +151,24 @@ export const SupabaseLogin: React.FC<SupabaseLoginProps> = ({ onLoginSuccess }) 
                         <label className="block text-sm font-semibold text-slate-700 mb-2">
                             Senha
                         </label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                            placeholder="••••••••"
-                            required
-                            minLength={6}
-                        />
+                        <div className="relative">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all pr-12"
+                                placeholder="••••••••"
+                                required
+                                minLength={6}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                            >
+                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                        </div>
                         {isSignUp && (
                             <p className="text-xs text-slate-500 mt-1">Mínimo de 6 caracteres</p>
                         )}

@@ -21,6 +21,7 @@ export interface Collaborator {
   role: string; // Represents the Team
   isManager?: boolean;
   accessLevel?: string; // 'colaborador', 'gestor', 'admin'
+  mustChangePassword?: boolean;
 }
 
 export interface Company {
@@ -47,6 +48,7 @@ export interface Task {
   checklist?: { title: string, completed: boolean }[];
   repeatFrequency?: 'none' | 'daily' | 'weekly' | 'monthly';
   creatorId?: string;
+  attachmentUrl?: string; // URL for attached document (e.g. PDF)
 }
 
 export type TaskInput = Omit<Task, 'id' | 'createdAt' | 'startedAt' | 'completedAt' | 'companyId'>;

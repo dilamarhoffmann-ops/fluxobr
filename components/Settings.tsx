@@ -28,6 +28,8 @@ interface SettingsProps {
   onUpdateTemplateTask: (templateId: string, taskId: string, updates: any) => void;
   onDeleteTemplateActivity: (templateId: string, taskId: string, activityId: string) => void;
   onImportData: (data: any[]) => void;
+  onUpdatePassword: (password: string) => Promise<void>;
+  onAdminResetPassword: (userId: string) => Promise<void>;
 }
 
 export const Settings: React.FC<SettingsProps> = ({
@@ -51,9 +53,9 @@ export const Settings: React.FC<SettingsProps> = ({
   onDeleteTemplateTask,
   onAddTemplateActivity,
   onUpdateTaskTemplate,
-  onUpdateTemplateTask,
-  onDeleteTemplateActivity,
-  onImportData
+  onImportData,
+  onUpdatePassword,
+  onAdminResetPassword
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newCollabName, setNewCollabName] = useState('');
@@ -61,6 +63,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const [newCollabEmail, setNewCollabEmail] = useState('');
   const [newCollabAccessLevel, setNewCollabAccessLevel] = useState('colaborador');
   const [editingCollabId, setEditingCollabId] = useState<string | null>(null);
+  const [newCollabPassword, setNewCollabPassword] = useState('');
 
   // Template States
   const [newTemplateName, setNewTemplateName] = useState('');
@@ -165,6 +168,16 @@ export const Settings: React.FC<SettingsProps> = ({
         }
         onAddCollaborator(newCollabName, newCollabRole, isManagerFlag, newCollabEmail, newCollabAccessLevel);
       }
+
+      // Handle Password Change if editing self
+      if (editingCollabId === currentUser.id && newCollabPassword) {
+        onUpdatePassword(newCollabPassword);
+      } else if (editingCollabId && newCollabPassword) {
+        // This case should be handled by UI preventing input, but purely defensively:
+        // We might alert that we can't change others' passwords directly.
+        // Ideally the UI switches to "Reset Email" button.
+      }
+
       resetForm();
     }
   };
@@ -174,6 +187,7 @@ export const Settings: React.FC<SettingsProps> = ({
     setNewCollabRole('');
     setNewCollabEmail('');
     setNewCollabAccessLevel('colaborador');
+    setNewCollabPassword('');
     setEditingCollabId(null);
   };
 
@@ -183,6 +197,7 @@ export const Settings: React.FC<SettingsProps> = ({
     setNewCollabRole(collab.role);
     setNewCollabEmail('');
     setNewCollabAccessLevel(collab.accessLevel || 'colaborador');
+    setNewCollabPassword('');
   };
 
   const handleAddTeamSubmit = (e: React.FormEvent) => {
@@ -443,7 +458,7 @@ export const Settings: React.FC<SettingsProps> = ({
               ))}
             </div>
 
-            {currentUser.accessLevel === 'admin' && (
+            {(currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor') && (
               <div className={`rounded-xl p-5 border transition-colors ${editingCollabId ? 'bg-amber-50/50 border-amber-200' : 'bg-indigo-50/50 border-indigo-100'}`}>
                 <h4 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${editingCollabId ? 'text-amber-900' : 'text-indigo-900'}`}>
                   {editingCollabId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
@@ -504,7 +519,50 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2">
+
+
+                  {/* Password Change Section */}
+                  {editingCollabId && (
+                    <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                      <h5 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
+                        <Lock className="w-3.5 h-3.5" /> Segurança
+                      </h5>
+
+                      {editingCollabId === currentUser.id ? (
+                        <div className="flex flex-col gap-2">
+                          <label className="text-xs font-bold text-slate-400 uppercase">Nova Senha</label>
+                          <input
+                            type="password"
+                            placeholder="Digite nova senha para alterar"
+                            className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            value={newCollabPassword}
+                            onChange={e => setNewCollabPassword(e.target.value)}
+                            minLength={6}
+                          />
+                          <p className="text-[10px] text-slate-400">Deixe em branco para manter a atual.</p>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          <p className="text-sm text-slate-600 mb-2">
+                            Você pode alterar a senha do usuário para uma senha padrão.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (editingCollabId && confirm('Tem certeza que deseja redefinir a senha deste usuário para "123mudar"?')) {
+                                onAdminResetPassword(editingCollabId);
+                              }
+                            }}
+                            className="w-fit flex items-center gap-2 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold px-3 py-2 rounded-lg transition-colors border border-amber-200"
+                          >
+                            <ShieldAlert className="w-3.5 h-3.5" /> Redefinir Senha para "123mudar"
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2 mt-4">
                     {editingCollabId && (
                       <button
                         type="button"
@@ -571,260 +629,264 @@ export const Settings: React.FC<SettingsProps> = ({
               </div>
             </div>
           </div>
-        </div>
+        </div >
       )}
 
-      {isAdminMode && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-              <Layers className="w-5 h-5 text-indigo-600" />
-              Modelos de Tarefas (Templates)
-            </h3>
-            <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">{taskTemplates.length} modelos</span>
-          </div>
+      {
+        isAdminMode && (
+          <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                <Layers className="w-5 h-5 text-indigo-600" />
+                Modelos de Tarefas (Templates)
+              </h3>
+              <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">{taskTemplates.length} modelos</span>
+            </div>
 
-          <div className="p-6">
-            <p className="text-sm text-slate-500 mb-6 font-medium">Crie estruturas de tarefas repetitivas para agilizar o lançamento de novos projetos ou demandas fixas.</p>
+            <div className="p-6">
+              <p className="text-sm text-slate-500 mb-6 font-medium">Crie estruturas de tarefas repetitivas para agilizar o lançamento de novos projetos ou demandas fixas.</p>
 
-            <div className="space-y-4 mb-8">
-              {taskTemplates.map((template) => (
-                <div key={template.id} className="border border-slate-100 rounded-xl overflow-hidden bg-slate-50/30">
-                  <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setExpandedTemplate(expandedTemplate === template.id ? null : template.id)}>
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="bg-indigo-600 p-2 rounded-lg">
-                        <Layers className="w-4 h-4 text-white" />
+              <div className="space-y-4 mb-8">
+                {taskTemplates.map((template) => (
+                  <div key={template.id} className="border border-slate-100 rounded-xl overflow-hidden bg-slate-50/30">
+                    <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setExpandedTemplate(expandedTemplate === template.id ? null : template.id)}>
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="bg-indigo-600 p-2 rounded-lg">
+                          <Layers className="w-4 h-4 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          {editingTemplateId === template.id ? (
+                            <div className="space-y-2" onClick={e => e.stopPropagation()}>
+                              <input
+                                type="text"
+                                className="w-full text-sm font-bold bg-white border border-indigo-200 px-2 py-1 rounded"
+                                value={editTemplateName}
+                                onChange={e => setEditTemplateName(e.target.value)}
+                              />
+                              <input
+                                type="text"
+                                className="w-full text-xs bg-white border border-slate-200 px-2 py-1 rounded"
+                                value={editTemplateDesc}
+                                onChange={e => setEditTemplateDesc(e.target.value)}
+                              />
+                              <div className="flex gap-2">
+                                <button onClick={saveTemplateEdit} className="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded">Salvar</button>
+                                <button onClick={() => setEditingTemplateId(null)} className="text-[10px] bg-slate-200 text-slate-600 px-2 py-1 rounded">Cancelar</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <p className="font-bold text-slate-800">{template.name}</p>
+                              <p className="text-xs text-slate-500">{template.description || 'Sem descrição'}</p>
+                            </>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        {editingTemplateId === template.id ? (
-                          <div className="space-y-2" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full uppercase">
+                          {template.tasks.length} Tarefas
+                        </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); startEditingTemplate(template); }}
+                          className="text-slate-400 hover:text-indigo-600 transition-colors p-1"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); onDeleteTaskTemplate(template.id); }} className="text-slate-400 hover:text-red-500 transition-colors p-1">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {expandedTemplate === template.id && (
+                      <div className="p-4 bg-white border-t border-slate-100 space-y-4 animate-fade-in shadow-inner">
+                        <div className="space-y-4">
+                          {template.tasks.map((tk: any) => (
+                            <div key={tk.id} className="pl-4 border-l-2 border-indigo-200 py-2">
+                              <div className="flex items-center justify-between mb-2">
+                                {editingTaskId === tk.id ? (
+                                  <div className="flex gap-2 items-center flex-1 pr-4">
+                                    <input
+                                      type="text"
+                                      className="flex-1 text-sm font-semibold bg-white border border-indigo-200 px-2 py-1 rounded"
+                                      value={editTaskTitle}
+                                      onChange={e => setEditTaskTitle(e.target.value)}
+                                    />
+                                    <button onClick={() => saveTaskEdit(template.id)} className="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded">Salvar</button>
+                                    <button onClick={() => setEditingTaskId(null)} className="text-[10px] bg-slate-200 text-slate-600 px-2 py-1 rounded">X</button>
+                                  </div>
+                                ) : (
+                                  <p className="font-semibold text-slate-700 text-sm flex items-center gap-2">
+                                    <CheckSquare className="w-3.5 h-3.5 text-indigo-600" /> {tk.title}
+                                  </p>
+                                )}
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => startEditingTask(tk)}
+                                    className="text-slate-300 hover:text-indigo-600 transition-colors p-1"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => onDeleteTemplateTask(template.id, tk.id)}
+                                    className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                                    title="Excluir tarefa do modelo"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Atividades / Checklist */}
+                              <div className="space-y-1.5 ml-5">
+                                {tk.activities.map((act: any) => (
+                                  <div key={act.id} className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded w-fit group">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-300"></div>
+                                    {act.title}
+                                    <button
+                                      onClick={() => onDeleteTemplateActivity(template.id, tk.id, act.id)}
+                                      className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all p-0.5"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+
+                                <div className="flex gap-2 mt-2">
+                                  <input
+                                    type="text"
+                                    placeholder="Nova atividade..."
+                                    className="text-[11px] px-2 py-1 rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400 w-40"
+                                    value={newActivityTitle || ''}
+                                    onChange={e => setNewActivityTitle(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleActivitySubmit(template.id, tk.id)}
+                                  />
+                                  <button onClick={() => handleActivitySubmit(template.id, tk.id)} className="text-[10px] bg-slate-800 text-white px-2 py-1 rounded hover:bg-slate-900">Add</button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {activeTaskForm === template.id ? (
+                          <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
                             <input
+                              autoFocus
                               type="text"
-                              className="w-full text-sm font-bold bg-white border border-indigo-200 px-2 py-1 rounded"
-                              value={editTemplateName}
-                              onChange={e => setEditTemplateName(e.target.value)}
+                              placeholder="Título da Tarefa do Modelo"
+                              className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 mb-2"
+                              value={newTaskTitle}
+                              onChange={e => setNewTaskTitle(e.target.value)}
                             />
-                            <input
-                              type="text"
-                              className="w-full text-xs bg-white border border-slate-200 px-2 py-1 rounded"
-                              value={editTemplateDesc}
-                              onChange={e => setEditTemplateDesc(e.target.value)}
-                            />
-                            <div className="flex gap-2">
-                              <button onClick={saveTemplateEdit} className="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded">Salvar</button>
-                              <button onClick={() => setEditingTemplateId(null)} className="text-[10px] bg-slate-200 text-slate-600 px-2 py-1 rounded">Cancelar</button>
+                            <div className="flex justify-end gap-2 text-xs">
+                              <button onClick={() => setActiveTaskForm(null)} className="px-3 py-1.5 text-slate-600 hover:bg-slate-200 rounded">Cancelar</button>
+                              <button onClick={() => handleTaskSubmit(template.id)} className="bg-indigo-600 text-white px-4 py-1.5 rounded hover:bg-indigo-700 font-bold">Salvar Tarefa</button>
                             </div>
                           </div>
                         ) : (
-                          <>
-                            <p className="font-bold text-slate-800">{template.name}</p>
-                            <p className="text-xs text-slate-500">{template.description || 'Sem descrição'}</p>
-                          </>
+                          <button
+                            onClick={() => setActiveTaskForm(template.id)}
+                            className="w-full py-2 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:text-indigo-600 hover:border-indigo-300 transition-all text-xs font-bold flex items-center justify-center gap-2"
+                          >
+                            <Plus className="w-3.5 h-3.5" /> Adicionar Tarefa ao Modelo
+                          </button>
                         )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full uppercase">
-                        {template.tasks.length} Tarefas
-                      </span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); startEditingTemplate(template); }}
-                        className="text-slate-400 hover:text-indigo-600 transition-colors p-1"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); onDeleteTaskTemplate(template.id); }} className="text-slate-400 hover:text-red-500 transition-colors p-1">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    )}
                   </div>
+                ))}
+              </div>
 
-                  {expandedTemplate === template.id && (
-                    <div className="p-4 bg-white border-t border-slate-100 space-y-4 animate-fade-in shadow-inner">
-                      <div className="space-y-4">
-                        {template.tasks.map((tk: any) => (
-                          <div key={tk.id} className="pl-4 border-l-2 border-indigo-200 py-2">
-                            <div className="flex items-center justify-between mb-2">
-                              {editingTaskId === tk.id ? (
-                                <div className="flex gap-2 items-center flex-1 pr-4">
-                                  <input
-                                    type="text"
-                                    className="flex-1 text-sm font-semibold bg-white border border-indigo-200 px-2 py-1 rounded"
-                                    value={editTaskTitle}
-                                    onChange={e => setEditTaskTitle(e.target.value)}
-                                  />
-                                  <button onClick={() => saveTaskEdit(template.id)} className="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded">Salvar</button>
-                                  <button onClick={() => setEditingTaskId(null)} className="text-[10px] bg-slate-200 text-slate-600 px-2 py-1 rounded">X</button>
-                                </div>
-                              ) : (
-                                <p className="font-semibold text-slate-700 text-sm flex items-center gap-2">
-                                  <CheckSquare className="w-3.5 h-3.5 text-indigo-600" /> {tk.title}
-                                </p>
-                              )}
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => startEditingTask(tk)}
-                                  className="text-slate-300 hover:text-indigo-600 transition-colors p-1"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => onDeleteTemplateTask(template.id, tk.id)}
-                                  className="text-slate-300 hover:text-red-500 transition-colors p-1"
-                                  title="Excluir tarefa do modelo"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Atividades / Checklist */}
-                            <div className="space-y-1.5 ml-5">
-                              {tk.activities.map((act: any) => (
-                                <div key={act.id} className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded w-fit group">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-300"></div>
-                                  {act.title}
-                                  <button
-                                    onClick={() => onDeleteTemplateActivity(template.id, tk.id, act.id)}
-                                    className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all p-0.5"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ))}
-
-                              <div className="flex gap-2 mt-2">
-                                <input
-                                  type="text"
-                                  placeholder="Nova atividade..."
-                                  className="text-[11px] px-2 py-1 rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400 w-40"
-                                  value={newActivityTitle || ''}
-                                  onChange={e => setNewActivityTitle(e.target.value)}
-                                  onKeyDown={(e) => e.key === 'Enter' && handleActivitySubmit(template.id, tk.id)}
-                                />
-                                <button onClick={() => handleActivitySubmit(template.id, tk.id)} className="text-[10px] bg-slate-800 text-white px-2 py-1 rounded hover:bg-slate-900">Add</button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {activeTaskForm === template.id ? (
-                        <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                          <input
-                            autoFocus
-                            type="text"
-                            placeholder="Título da Tarefa do Modelo"
-                            className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 mb-2"
-                            value={newTaskTitle}
-                            onChange={e => setNewTaskTitle(e.target.value)}
-                          />
-                          <div className="flex justify-end gap-2 text-xs">
-                            <button onClick={() => setActiveTaskForm(null)} className="px-3 py-1.5 text-slate-600 hover:bg-slate-200 rounded">Cancelar</button>
-                            <button onClick={() => handleTaskSubmit(template.id)} className="bg-indigo-600 text-white px-4 py-1.5 rounded hover:bg-indigo-700 font-bold">Salvar Tarefa</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setActiveTaskForm(template.id)}
-                          className="w-full py-2 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:text-indigo-600 hover:border-indigo-300 transition-all text-xs font-bold flex items-center justify-center gap-2"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Adicionar Tarefa ao Modelo
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-5">
-              <h4 className="text-sm font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-                <Plus className="w-4 h-4" /> Criar Novo Modelo de Checklist
-              </h4>
-              <form onSubmit={handleTemplateSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="Nome do Modelo (ex: Auditoria Mensal)"
-                  className="text-sm px-3 py-2 rounded-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={newTemplateName}
-                  onChange={e => setNewTemplateName(e.target.value)}
-                  required
-                />
-                <div className="flex gap-2">
+              <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-5">
+                <h4 className="text-sm font-semibold text-indigo-900 mb-4 flex items-center gap-2">
+                  <Plus className="w-4 h-4" /> Criar Novo Modelo de Checklist
+                </h4>
+                <form onSubmit={handleTemplateSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <input
                     type="text"
-                    placeholder="Descrição breve"
-                    className="flex-1 text-sm px-3 py-2 rounded-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={newTemplateDesc}
-                    onChange={e => setNewTemplateDesc(e.target.value)}
+                    placeholder="Nome do Modelo (ex: Auditoria Mensal)"
+                    className="text-sm px-3 py-2 rounded-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={newTemplateName}
+                    onChange={e => setNewTemplateName(e.target.value)}
+                    required
                   />
-                  <button type="submit" className="bg-indigo-600 text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap">
-                    Criar Modelo
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Descrição breve"
+                      className="flex-1 text-sm px-3 py-2 rounded-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={newTemplateDesc}
+                      onChange={e => setNewTemplateDesc(e.target.value)}
+                    />
+                    <button type="submit" className="bg-indigo-600 text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap">
+                      Criar Modelo
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+
+      {
+        isPasswordModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100 p-6">
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-indigo-100 p-2 rounded-lg">
+                    <Lock className="w-5 h-5 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800">Acesso Administrativo</h3>
+                    <p className="text-xs text-slate-500">Digite a senha para confirmar.</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsPasswordModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handlePasswordSubmit}>
+                <div className="mb-4">
+                  <input
+                    type="password"
+                    autoFocus
+                    placeholder="Senha Administrativa"
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all ${passwordError ? 'border-red-300 focus:ring-red-200 bg-red-50' : 'border-slate-200 focus:ring-indigo-500'}`}
+                    value={passwordAttempt}
+                    onChange={(e) => {
+                      setPasswordAttempt(e.target.value);
+                      setPasswordError(false);
+                    }}
+                  />
+                  {passwordError && (
+                    <p className="text-xs text-red-500 mt-1 font-medium">Senha incorreta. Tente novamente.</p>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPasswordModalOpen(false)}
+                    className="flex-1 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg transition-colors border border-slate-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+                  >
+                    Confirmar
                   </button>
                 </div>
               </form>
             </div>
           </div>
-        </div>
-      )}
-
-
-      {isPasswordModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-100 p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-indigo-100 p-2 rounded-lg">
-                  <Lock className="w-5 h-5 text-indigo-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-800">Acesso Administrativo</h3>
-                  <p className="text-xs text-slate-500">Digite a senha para confirmar.</p>
-                </div>
-              </div>
-              <button onClick={() => setIsPasswordModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handlePasswordSubmit}>
-              <div className="mb-4">
-                <input
-                  type="password"
-                  autoFocus
-                  placeholder="Senha Administrativa"
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all ${passwordError ? 'border-red-300 focus:ring-red-200 bg-red-50' : 'border-slate-200 focus:ring-indigo-500'}`}
-                  value={passwordAttempt}
-                  onChange={(e) => {
-                    setPasswordAttempt(e.target.value);
-                    setPasswordError(false);
-                  }}
-                />
-                {passwordError && (
-                  <p className="text-xs text-red-500 mt-1 font-medium">Senha incorreta. Tente novamente.</p>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsPasswordModalOpen(false)}
-                  className="flex-1 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg transition-colors border border-slate-200"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
-                >
-                  Confirmar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
