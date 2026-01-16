@@ -368,7 +368,7 @@ export const Settings: React.FC<SettingsProps> = ({
               <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Membros Ativos</h4>
               {collaborators.map((collab) => (
                 <div key={collab.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-1">
                     <img src={collab.avatar} alt={collab.name} className="w-10 h-10 rounded-full border border-white shadow-sm" />
                     <div>
                       <p className="font-medium text-slate-800">{collab.name}</p>
