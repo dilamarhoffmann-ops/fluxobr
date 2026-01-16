@@ -380,7 +380,7 @@ export const Settings: React.FC<SettingsProps> = ({
                     </div>
                   </div>
                   {currentUser.accessLevel === 'admin' && (
-                    <>
+                    <div className="flex gap-1">
                       <button
                         type="button"
                         onClick={() => handleEditClick(collab)}
@@ -397,7 +397,7 @@ export const Settings: React.FC<SettingsProps> = ({
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
-                    </>
+                    </div>
                   )}
                 </div>
               ))}
