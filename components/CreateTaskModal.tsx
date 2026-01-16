@@ -15,6 +15,7 @@ interface CreateTaskModalProps {
   taskToEdit?: Task;
   preselectedDate?: string;
   initialMode?: 'nova' | 'modelo' | 'lembrete';
+  isManager?: boolean;
 }
 
 export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
@@ -27,7 +28,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   taskTemplates = [],
   taskToEdit,
   preselectedDate,
-  initialMode = 'nova'
+  initialMode = 'nova',
+  isManager = false
 }) => {
   const [formData, setFormData] = useState<TaskInput>({
     title: '',
@@ -244,8 +246,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[90vh]">
         <div className="bg-slate-50 dark:bg-slate-800 px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center sticky top-0 z-10">
           <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
             {taskToEdit ? 'Editar Tarefa' : 'Nova Tarefa'}
@@ -255,7 +257,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-1 custom-scrollbar">
 
           {!taskToEdit && (
             <div className="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4">
@@ -522,9 +524,14 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   value={formData.status}
                   onChange={e => setFormData({ ...formData, status: e.target.value as TaskStatus })}
                 >
-                  {Object.values(TaskStatus).map(s => (
-                    <option key={s} value={s}>{s}</option>
-                  ))}
+                  {Object.values(TaskStatus).map(s => {
+                    const isDisabled = !isManager && (s === TaskStatus.DONE || s === TaskStatus.BLOCKED);
+                    return (
+                      <option key={s} value={s} disabled={isDisabled}>
+                        {s} {isDisabled ? '(Apenas Gestores)' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>
@@ -565,42 +572,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
 
 
 
-          <div className="space-y-1 mt-4">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-              <Upload className="w-4 h-4 text-slate-400" /> Anexar Documento (PDF)
-            </label>
-            <div className="flex items-center gap-2">
-              <label className="cursor-pointer flex items-center justify-center px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors w-full bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300">
-                <input
-                  type="file"
-                  accept=".pdf"
-                  className="hidden"
-                  onChange={e => {
-                    if (e.target.files && e.target.files[0]) {
-                      setSelectedFile(e.target.files[0]);
-                    }
-                  }}
-                />
-                <div className="flex items-center gap-2">
-                  {selectedFile ? (
-                    <span className="text-indigo-600 font-semibold truncate max-w-[200px]">{selectedFile.name}</span>
-                  ) : (
-                    <span className="text-sm">Clique para selecionar um arquivo PDF</span>
-                  )}
-                </div>
-              </label>
-              {selectedFile && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedFile(null)}
-                  className="p-2 text-slate-400 hover:text-red-500"
-                  title="Remover anexo"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
-            </div>
-          </div>
+
 
           {!taskToEdit && (
             <div className="flex items-center gap-2 pt-2 bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800/50">

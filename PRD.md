@@ -20,7 +20,7 @@ O **AgilePulse Dashboard** é uma plataforma de gestão de tarefas e colaboraç�
 ### 4.1. Gestão de Tarefas (Kanban & Lista)
 *   **Criação e Edição:** Tarefas com título, descrição, prioridade, data de entrega, responsável, empresa vinculada e checklists.
 *   **Checklists:** Sub-tarefas dentro de um card principal. O status da tarefa muda automaticamente conforme o progresso do checklist (e.g., pendente -> em progresso -> revisão).
-*   **Status Workflow:** Pendente, Em Andamento, Em Revisão (somente gestores/admin), Concluído, Bloqueado.
+*   **Status Workflow:** Pendente, Em Andamento, Em Revisão, Concluído (somente gestores/admin), Bloqueado (somente gestores/admin).
 *   **Lembretes:** Configuração de lembretes com notificações no navegador.
 *   **Anexos:** Suporte a links e uploads de arquivos.
 *   **Recorrência:** Configuração de frequência de repetição para tarefas rotineiras.
@@ -28,7 +28,7 @@ O **AgilePulse Dashboard** é uma plataforma de gestão de tarefas e colaboraç�
 ### 4.2. Gestão de Equipes e Empresas
 *   **Empresas:** Cadastro de empresas clientes com vinculação a squads/times específicos.
 *   **Times (Squads):** Organização de colaboradores em times.
-*   **Restrições de Visualização:** Colaboradores veem apenas empresas e tarefas pertinentes ao seu time (exceto Admins).
+*   **Restrições de Visualização:** Administradores e Gestores possuem acesso total às suas respectivas áreas (global vs. squad) por padrão, sem necessidade de ativação manual. Colaboradores veem apenas dados pertinentes ao seu próprio trabalho e equipe básica.
 
 ### 4.3. Base de Conhecimento (FAQ)
 *   **FAQ Interativo:** Perguntas e respostas categorizadas.
@@ -73,10 +73,10 @@ O **AgilePulse Dashboard** é uma plataforma de gestão de tarefas e colaboraç�
 *   Políticas rigorosas no banco de dados para garantir que usuários acessem apenas dados permitidos pelo seu nível de acesso e time.
 
 ## 6. Fluxos de Aprovação
-1.  **Execução:** Colaborador marca itens do checklist.
+1.  **Execução:** Colaborador marca itens do checklist ou move manualmente para 'Em Revisão'.
 2.  **Automação:** Tarefa move para "Em Andamento" ao iniciar checklist.
-3.  **Conclusão:** Ao completar todos os itens, tarefa move para "Em Revisão".
-4.  **Validação:** Gestor revisa e move para "Concluído" ou devolve.
+3.  **Conclusão:** Ao completar todos os itens, tarefa move automaticamente para "Em Revisão".
+4.  **Validação:** Apenas o Gestor pode validar a revisão e mover a tarefa para "Concluído".
 
 ## 7. Roadmap Futuro (Sugestões)
 *   **Notificações em Tempo Real:** WebSockets para atualizações instantâneas sem refresh.

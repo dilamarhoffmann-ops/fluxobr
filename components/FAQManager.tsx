@@ -9,15 +9,17 @@ interface FAQManagerProps {
   onAdd: (faq: Omit<FAQItem, 'id'>) => void;
   onUpdate: (id: string, faq: Omit<FAQItem, 'id'>) => void;
   onDelete: (id: string) => void;
+  isAdmin: boolean;
 }
 
-export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, onDelete }) => {
+export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, onDelete, isAdmin }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [attachments, setAttachments] = useState<any[]>([]);
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
+  const [isExpandingAnswer, setIsExpandingAnswer] = useState(false);
 
   const loadAttachments = async () => {
     setIsLoadingAttachments(true);
@@ -162,16 +164,64 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                 required
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Resposta / Descrição</label>
+            <div className="relative group/field">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-slate-700">Resposta / Descrição</label>
+                <button
+                  type="button"
+                  onClick={() => setIsExpandingAnswer(true)}
+                  className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded transition-colors"
+                >
+                  <ExternalLink className="w-3 h-3" /> Expandir Tela
+                </button>
+              </div>
               <textarea
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none h-24 resize-none"
+                className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[150px] resize-y custom-scrollbar leading-relaxed"
                 placeholder="Descreva o procedimento ou resposta..."
                 value={formData.answer}
                 onChange={e => setFormData({ ...formData, answer: e.target.value })}
                 required
               />
             </div>
+
+            {/* Modal de Resposta Expandida */}
+            {isExpandingAnswer && (
+              <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col border border-slate-100 dark:border-slate-800">
+                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50 rounded-t-2xl">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                      <Edit2 className="w-5 h-5 text-indigo-600" />
+                      Editor de Resposta
+                    </h3>
+                    <button
+                      onClick={() => setIsExpandingAnswer(false)}
+                      className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-slate-100 dark:border-slate-600 transition-all"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="flex-1 p-6 flex flex-col">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Pergunta: {formData.question || '...'}</p>
+                    <textarea
+                      autoFocus
+                      className="flex-1 w-full p-6 border border-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 rounded-xl focus:ring-0 focus:outline-none resize-none text-lg leading-relaxed custom-scrollbar shadow-inner"
+                      placeholder="Escreva aqui a resposta detalhada..."
+                      value={formData.answer}
+                      onChange={e => setFormData({ ...formData, answer: e.target.value })}
+                    />
+                  </div>
+                  <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex justify-end bg-slate-50 dark:bg-slate-800/50 rounded-b-2xl">
+                    <button
+                      type="button"
+                      onClick={() => setIsExpandingAnswer(false)}
+                      className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all active:scale-95"
+                    >
+                      Concluir Edição
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
                 <ExternalLink className="w-3 h-3 text-slate-400" /> Link Externo (Opcional)
@@ -276,22 +326,24 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
         {faqs.map((faq) => (
           <div key={faq.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-all group relative">
 
-            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={() => handleEditClick(faq)}
-                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                title="Editar"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => onDelete(faq.id)}
-                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                title="Excluir"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
+            {isAdmin && (
+              <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => handleEditClick(faq)}
+                  className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                  title="Editar"
+                >
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onDelete(faq.id)}
+                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Excluir"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
             <div className="flex items-start gap-4 pr-16">
               <div className="bg-indigo-100 p-2 rounded-lg mt-1 shrink-0">
@@ -336,96 +388,98 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
         )}
       </div>
 
-      {/* Attached Documents Section */}
-      <div className="mt-12 pt-8 border-t border-slate-200">
-        <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-          <Paperclip className="w-5 h-5 text-indigo-600" />
-          Documentos Anexados
-        </h3>
+      {/* Attached Documents Section - Only for Admins */}
+      {isAdmin && (
+        <div className="mt-12 pt-8 border-t border-slate-200">
+          <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <Paperclip className="w-5 h-5 text-indigo-600" />
+            Documentos Anexados
+          </h3>
 
-        {isLoadingAttachments ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
-          </div>
-        ) : attachments.length === 0 ? (
-          <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-            <p className="text-slate-500">Nenhum documento anexado encontrado.</p>
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="px-6 py-4 font-semibold text-slate-700">Nome do Arquivo</th>
-                    <th className="px-6 py-4 font-semibold text-slate-700">Data de Envio</th>
-                    <th className="px-6 py-4 font-semibold text-slate-700">Tamanho</th>
-                    <th className="px-6 py-4 font-semibold text-slate-700 text-right">Ações</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {attachments.map((file) => {
-                    const publicUrl = storage.getPublicUrl('task-attachments', file.name);
-                    return (
-                      <tr key={file.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="bg-red-50 p-2 rounded text-red-600">
-                              <FileText className="w-4 h-4" />
-                            </div>
-                            <span className="font-medium text-slate-700 truncate max-w-[300px]" title={file.name}>
-                              {file.name}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-slate-500">
-                          {new Date(file.created_at).toLocaleDateString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </td>
-                        <td className="px-6 py-4 text-slate-500">
-                          {(file.metadata?.size / 1024 / 1024).toFixed(2)} MB
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <a
-                              href={publicUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
-                              title="Visualizar"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
-                            <button
-                              onClick={() => copyToClipboard(publicUrl)}
-                              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded transition-colors"
-                              title="Copiar Link"
-                            >
-                              {copiedLink === publicUrl ? <Check className="w-4 h-4 text-emerald-500" /> : <Link className="w-4 h-4" />}
-                            </button>
-                            <button
-                              onClick={() => handleDeleteAttachment(file.name)}
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                              title="Excluir"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+          {isLoadingAttachments ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
             </div>
-          </div>
-        )}
-      </div>
+          ) : attachments.length === 0 ? (
+            <div className="text-center py-8 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+              <p className="text-slate-500">Nenhum documento anexado encontrado.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 border-b border-slate-200">
+                    <tr>
+                      <th className="px-6 py-4 font-semibold text-slate-700">Nome do Arquivo</th>
+                      <th className="px-6 py-4 font-semibold text-slate-700">Data de Envio</th>
+                      <th className="px-6 py-4 font-semibold text-slate-700">Tamanho</th>
+                      <th className="px-6 py-4 font-semibold text-slate-700 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {attachments.map((file) => {
+                      const publicUrl = storage.getPublicUrl('task-attachments', file.name);
+                      return (
+                        <tr key={file.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-red-50 p-2 rounded text-red-600">
+                                <FileText className="w-4 h-4" />
+                              </div>
+                              <span className="font-medium text-slate-700 truncate max-w-[300px]" title={file.name}>
+                                {file.name}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-slate-500">
+                            {new Date(file.created_at).toLocaleDateString('pt-BR', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </td>
+                          <td className="px-6 py-4 text-slate-500">
+                            {(file.metadata?.size / 1024 / 1024).toFixed(2)} MB
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <a
+                                href={publicUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                title="Visualizar"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
+                              <button
+                                onClick={() => copyToClipboard(publicUrl)}
+                                className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded transition-colors"
+                                title="Copiar Link"
+                              >
+                                {copiedLink === publicUrl ? <Check className="w-4 h-4 text-emerald-500" /> : <Link className="w-4 h-4" />}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteAttachment(file.name)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                title="Excluir"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div >
   );
 };

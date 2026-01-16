@@ -272,7 +272,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
             {/* Daily Tasks Modal */}
             <AnimatePresence>
                 {selectedDay && (
-                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
                         <motion.div
                             initial={{ opacity: 0, scale: 0.9, y: 20 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}

@@ -86,8 +86,11 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
     const taskId = e.dataTransfer.getData('taskId');
 
     // Bloqueio visual/UI adicional para não-gestores
-    if (!isManager && (newStatus === TaskStatus.DONE || newStatus === TaskStatus.BLOCKED || newStatus === TaskStatus.REVIEW)) {
-      alert('Apenas gestores podem mover tarefas para estes status.');
+    const task = tasks.find(t => t.id === taskId);
+    const hasChecklist = task?.checklist && task.checklist.length > 0;
+
+    if (!isManager && (newStatus === TaskStatus.DONE || newStatus === TaskStatus.BLOCKED)) {
+      alert('Apenas gestores podem mover tarefas para "Concluído" ou "Bloqueado".');
       return;
     }
 
@@ -182,7 +185,12 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
                     <span className="font-black text-sm">
                       ({groupedTasks[column.id].length})
                     </span>
-                    <h4 className="font-bold text-sm uppercase tracking-wider">{column.title}</h4>
+                    <div className="flex flex-col">
+                      <h4 className="font-bold text-sm uppercase tracking-wider leading-none">{column.title}</h4>
+                      {(column.id === TaskStatus.DONE || column.id === TaskStatus.BLOCKED) && (
+                        <span className="text-[8px] font-black opacity-70 uppercase tracking-tighter mt-0.5">Apenas Gestores</span>
+                      )}
+                    </div>
                   </div>
                   {isManager && (
                     <button onClick={onOpenCreateModal} className="hover:scale-110 transition-transform">
@@ -190,11 +198,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
                     </button>
                   )}
                 </div>
-                {!isManager && (column.id === TaskStatus.DONE || column.id === TaskStatus.BLOCKED || column.id === TaskStatus.REVIEW) && (
-                  <div className="mt-1">
-                    <span className="text-[9px] font-bold opacity-80 uppercase tracking-tight">Somente Gestores</span>
-                  </div>
-                )}
+
               </div>
 
               {/* Task List */}
@@ -286,8 +290,11 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
                               <div className="flex items-center gap-1.5 text-[10px] text-slate-400 dark:text-slate-500">
                                 <Calendar className="w-3 h-3" />
                                 {(() => {
-                                  const [y, m, d] = task.dueDate.split('-').map(Number);
-                                  return new Date(y, m - 1, d).toLocaleDateString('pt-BR');
+                                  try {
+                                    return new Date(task.dueDate).toLocaleDateString('pt-BR');
+                                  } catch (e) {
+                                    return 'Data inválida';
+                                  }
                                 })()}
                               </div>
                             </div>

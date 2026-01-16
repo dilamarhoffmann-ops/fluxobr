@@ -20,6 +20,7 @@ import { TaskDetailsModal } from './components/TaskDetailsModal';
 import { AgendaView } from './components/AgendaView';
 import { ReminderNotificationModal } from './components/ReminderNotificationModal';
 import { ForceChangePasswordModal } from './components/ForceChangePasswordModal';
+import { HelpModal } from './components/HelpModal';
 
 enum Tab {
   DASHBOARD = 'dashboard',
@@ -48,13 +49,13 @@ const App: React.FC = () => {
   const [currentUserProfile, setCurrentUserProfile] = useState<Collaborator | null>(null);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isAdminMode, setIsAdminMode] = useState(false);
 
   // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [preselectedDate, setPreselectedDate] = useState<string | null>(null);
   const [createModalMode, setCreateModalMode] = useState<'nova' | 'modelo' | 'lembrete'>('nova');
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
 
   // Delete Modal State
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
@@ -126,6 +127,7 @@ const App: React.FC = () => {
   const mapCollaboratorFromDB = (data: any): Collaborator => ({
     id: data.id,
     name: data.full_name || 'Usuário',
+    email: data.email,
     avatar: data.avatar_url || `https://picsum.photos/100/100?seed=${data.id}`,
     role: data.role || 'Membro',
     isManager: data.is_manager,
@@ -253,8 +255,8 @@ const App: React.FC = () => {
     const isGlobalAdmin = currentUserProfile.accessLevel === 'admin';
     const userTeam = currentUserProfile.role.trim().toLowerCase();
 
-    // 1. ADMIN em MODO ADMIN: Vê absolutamente tudo
-    if (isGlobalAdmin && isAdminMode) {
+    // 1. ADMIN: Vê absolutamente tudo
+    if (isGlobalAdmin) {
       return tasks;
     }
 
@@ -266,22 +268,20 @@ const App: React.FC = () => {
 
     return tasks.filter(t => {
       // Regra 0 (Prioridade Máxima): Se sou o CRIADOR ou RESPONSÁVEL, eu sempre vejo.
-      // Isso garante que o usuário nunca perca de vista o que ele mesmo fez ou o que é dele.
       if (t.assigneeId === currentUserProfile.id || t.creatorId === currentUserProfile.id) return true;
 
-      // Regra 1: REMOVIDA
-      // A visualização deve ser vinculada ao MEMBRO/TIME, não apenas à empresa de forma genérica.
-      // Isso evita que Squads diferentes que atendem a mesma empresa vejam as tarefas uns dos outros.
-      // if (t.companyId && allowedCompanyIds.has(t.companyId)) return true;
+      // Se o usuário for um COLABORADOR comum, ele visualiza APENAS suas próprias tarefas (Regra 0).
+      // A visibilidade de equipe (Regras 3 e 4) aplica-se apenas a GESTORES ou ADMINS.
+      const isManagerOrAdmin = currentUserProfile.accessLevel === 'gestor' || currentUserProfile.accessLevel === 'admin';
+      if (!isManagerOrAdmin) return false;
 
-      // Regra 3: Atribuído a alguém da minha equipe (mesmo squad)
+      // Regra 3: Atribuído a alguém da minha equipe (mesmo squad) - VISÍVEL APENAS PARA GESTORES
       if (t.assigneeId) {
         const assigneeRole = colabRoleMap.get(t.assigneeId);
         if (assigneeRole === userTeam) return true;
       }
 
-      // Regra 4: Criado por alguém da minha equipe (mesmo squad)
-      // Fundamental para lembretes da equipe que ainda não foram atribuídos
+      // Regra 4: Criado por alguém da minha equipe (mesmo squad) - VISÍVEL APENAS PARA GESTORES
       if (t.creatorId) {
         const creatorRole = colabRoleMap.get(t.creatorId);
         if (creatorRole === userTeam) return true;
@@ -296,7 +296,7 @@ const App: React.FC = () => {
 
       return false;
     });
-  }, [tasks, isAdminMode, currentUserProfile, filteredCompanies, collaborators]);
+  }, [tasks, currentUserProfile, filteredCompanies, collaborators]);
 
   const filteredCollaborators = useMemo(() => {
     if (!currentUserProfile) return [];
@@ -327,9 +327,9 @@ const App: React.FC = () => {
     // Define se o usuário tem permissões de gestor baseado no perfil
     const isManagerProfile = currentUserProfile?.accessLevel === 'admin' || currentUserProfile?.accessLevel === 'gestor';
 
-    // Somente gestores podem mover para REVISÃO, CONCLUÍDO ou BLOQUEADO
-    if (!isManagerProfile && (newStatus === TaskStatus.DONE || newStatus === TaskStatus.BLOCKED || newStatus === TaskStatus.REVIEW)) {
-      alert('Apenas gestores podem marcar tarefas como "Em Revisão", "Concluído" ou "Bloqueado".');
+    // Somente gestores podem mover para CONCLUÍDO ou BLOQUEADO
+    if (!isManagerProfile && (newStatus === TaskStatus.DONE || newStatus === TaskStatus.BLOCKED)) {
+      alert('Apenas gestores podem marcar tarefas como "Bloqueado" ou "Concluído".');
       return;
     }
 
@@ -942,24 +942,18 @@ const App: React.FC = () => {
                 { label: 'Tarefas', href: Tab.TASKS, icon: <CheckSquare className="w-5 h-5" /> },
                 { label: 'Agenda', href: Tab.AGENDA, icon: <Calendar className="w-5 h-5" /> },
                 { label: 'Empresas', href: Tab.COMPANIES, icon: <Building2 className="w-5 h-5" /> },
-                ...(isAdminMode ? [{ label: 'FAQ Gestor', href: Tab.FAQ, icon: <HelpCircle className="w-5 h-5" /> }] : []),
-                // Configurações restritas APENAS para ADMIN
-                ...(currentUser.accessLevel === 'admin' ? [{ label: 'Configurações', href: Tab.SETTINGS, icon: <SettingsIcon className="w-5 h-5" /> }] : []),
+                ...(currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor' ? [{ label: 'FAQ Gestor', href: Tab.FAQ, icon: <HelpCircle className="w-5 h-5" /> }] : []),
+                // Configurações acessíveis para Admin e Gestor
+                ...(currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor' ? [{ label: 'Configurações', href: Tab.SETTINGS, icon: <SettingsIcon className="w-5 h-5" /> }] : []),
               ]}
             />
           </nav>
           <div className="p-6">
             <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-600">
               <div className="flex items-center gap-3 mb-3">
-                <div className={`w-2.5 h-2.5 rounded-full ${isAdminMode && currentUserProfile?.accessLevel === 'admin' ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-400'}`}></div>
-                <span className={`text-xs uppercase tracking-wider font-bold ${isAdminMode && currentUserProfile?.accessLevel === 'admin' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                  {isAdminMode && currentUserProfile?.accessLevel === 'admin'
-                    ? 'Admin Mode Ativo'
-                    : currentUserProfile?.accessLevel === 'admin'
-                      ? 'Administrador'
-                      : currentUserProfile?.accessLevel === 'gestor'
-                        ? 'Gestor'
-                        : 'Colaborador'}
+                <div className={`w-2.5 h-2.5 rounded-full ${currentUser.accessLevel === 'admin' ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-400'}`}></div>
+                <span className={`text-xs uppercase tracking-wider font-bold ${currentUser.accessLevel === 'admin' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                  {currentUser.accessLevel === 'admin' ? 'Administrador' : currentUser.accessLevel === 'gestor' ? 'Gestor' : 'Colaborador'}
                 </span>
               </div>
               <button onClick={signOut} className="flex items-center gap-2 text-sm text-slate-400 hover:text-red-500 transition-colors"><LogOut className="w-4 h-4" /> Sair</button>
@@ -977,6 +971,13 @@ const App: React.FC = () => {
             </h2>
           </div>
           <div className="flex items-center gap-6">
+            <button
+              onClick={() => setIsHelpModalOpen(true)}
+              className="text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors"
+              title="Dúvidas"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
             <ThemeToggle />
             <div className="flex items-center gap-3 pl-6 border-l border-slate-200 dark:border-slate-700">
               <img src={currentUser.avatar} alt="User" className="w-10 h-10 rounded-full ring-2 ring-blue-50 dark:ring-slate-700" />
@@ -989,7 +990,7 @@ const App: React.FC = () => {
         </header>
 
         <div className={`flex-1 overflow-y-auto ${activeTab === Tab.TASKS || activeTab === Tab.AGENDA || activeTab === Tab.COMPANIES || activeTab === Tab.SETTINGS ? 'p-2 md:p-4' : 'p-4 md:p-8'}`}>
-          <div className={`${activeTab === Tab.TASKS || activeTab === Tab.AGENDA || activeTab === Tab.COMPANIES || activeTab === Tab.SETTINGS ? 'max-w-[98%]' : 'max-w-7xl'} mx-auto h-full`}>
+          <div className={`${activeTab === Tab.TASKS || activeTab === Tab.AGENDA || activeTab === Tab.COMPANIES || activeTab === Tab.SETTINGS ? 'max-w-[98%]' : 'max-w-7xl'} mx-auto min-h-full`}>
             {dataLoading ? (
               <div className="flex flex-col items-center justify-center h-64 space-y-4">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -1050,13 +1051,12 @@ const App: React.FC = () => {
                 )}
                 {activeTab === Tab.SETTINGS && (
                   <Settings
-                    isManager={isAdminMode}
-                    onToggleManager={setIsAdminMode}
+                    isManager={currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor'}
                     collaborators={filteredCollaborators}
                     onAddCollaborator={handleAddCollaborator}
                     onDeleteCollaborator={handleDeleteCollaborator}
                     onEditCollaborator={handleEditCollaborator}
-                    teams={isAdminMode ? teams : [currentUser.role]}
+                    teams={(currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor') ? teams : [currentUser.role]}
                     onAddTeam={handleAddTeam}
                     onDeleteTeam={handleDeleteTeam}
                     authorizedEmails={authorizedEmails}
@@ -1077,8 +1077,14 @@ const App: React.FC = () => {
                     onAdminResetPassword={handleAdminResetPassword}
                   />
                 )}
-                {activeTab === Tab.FAQ && isAdminMode && (
-                  <FAQManager faqs={faqs} onAdd={handleAddFAQ} onUpdate={handleUpdateFAQ} onDelete={handleDeleteFAQ} />
+                {activeTab === Tab.FAQ && (currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor') && (
+                  <FAQManager
+                    faqs={faqs}
+                    onAdd={handleAddFAQ}
+                    onUpdate={handleUpdateFAQ}
+                    onDelete={handleDeleteFAQ}
+                    isAdmin={currentUser.accessLevel === 'admin'}
+                  />
                 )}
               </>
             )}
@@ -1100,6 +1106,7 @@ const App: React.FC = () => {
         taskToEdit={editingTask || undefined}
         preselectedDate={preselectedDate || undefined}
         initialMode={createModalMode}
+        isManager={currentUserProfile?.accessLevel === 'admin' || currentUserProfile?.accessLevel === 'gestor'}
       />
 
       <DeleteConfirmModal
@@ -1132,9 +1139,14 @@ const App: React.FC = () => {
       {currentUserProfile?.mustChangePassword && (
         <ForceChangePasswordModal
           onUpdatePassword={handleForceUpdatePassword}
-          isLoading={dataLoading} // Reusing dataLoading or could make a specific loading state
+          isLoading={dataLoading}
         />
       )}
+
+      <HelpModal
+        isOpen={isHelpModalOpen}
+        onClose={() => setIsHelpModalOpen(false)}
+      />
     </div>
   );
 };

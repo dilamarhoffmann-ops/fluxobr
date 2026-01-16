@@ -12,9 +12,9 @@ export const FAQViewModal: React.FC<FAQViewModalProps> = ({ isOpen, onClose, faq
   if (!isOpen || !faq) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 dark:border-slate-800 dark:bg-slate-900">
-        <div className="bg-slate-50 dark:bg-slate-800 px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg border border-slate-100 dark:border-slate-800 dark:bg-slate-900 flex flex-col max-h-[90vh]">
+        <div className="bg-slate-50 dark:bg-slate-800 px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center sticky top-0 z-10 rounded-t-xl">
           <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <HelpCircle className="w-5 h-5 text-indigo-600" />
             FAQ Relacionada
@@ -24,7 +24,7 @@ export const FAQViewModal: React.FC<FAQViewModalProps> = ({ isOpen, onClose, faq
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
           <div>
             <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Pergunta</h4>
             <p className="text-slate-700 dark:text-slate-300 text-lg">{faq.question}</p>
@@ -62,10 +62,10 @@ export const FAQViewModal: React.FC<FAQViewModalProps> = ({ isOpen, onClose, faq
           </div>
         </div>
 
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 flex justify-end">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700 flex justify-end sticky bottom-0 z-10 rounded-b-xl">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-800 text-white font-medium rounded-lg hover:bg-slate-900 transition-colors mb-2"
+            className="px-6 py-2 bg-slate-800 dark:bg-slate-700 text-white font-bold rounded-lg hover:bg-slate-900 dark:hover:bg-slate-600 transition-all active:scale-95 shadow-lg"
           >
             Fechar
           </button>

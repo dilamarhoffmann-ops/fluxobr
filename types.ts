@@ -17,6 +17,7 @@ export enum TaskPriority {
 export interface Collaborator {
   id: string;
   name: string;
+  email?: string;
   avatar: string;
   role: string; // Represents the Team
   isManager?: boolean;
