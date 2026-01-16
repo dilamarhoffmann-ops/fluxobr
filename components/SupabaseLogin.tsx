@@ -95,6 +95,9 @@ export const SupabaseLogin: React.FC<SupabaseLoginProps> = ({ onLoginSuccess }) 
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-cyan-500 p-6">
             <div className="bg-white p-10 rounded-2xl shadow-2xl max-w-md w-full">
                 <div className="text-center mb-8">
+                    <div className="flex justify-center mb-6">
+                        <img src="/logo.png" alt="FluxoBR Logo" className="w-32 h-32 object-contain" />
+                    </div>
                     <h2 className="text-3xl font-bold text-slate-800 mb-2">
                         {isSignUp ? 'Criar Conta' : 'Login'}
                     </h2>
