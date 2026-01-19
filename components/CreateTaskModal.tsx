@@ -58,6 +58,22 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
+    const formatForDateTimeLocal = (isoString?: string) => {
+      if (!isoString) return '';
+      try {
+        const date = new Date(isoString);
+        // Correctly handle local time for YYYY-MM-DDTHH:mm format
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      } catch (e) {
+        return '';
+      }
+    };
+
     if (taskToEdit) {
       setFormData({
         title: taskToEdit.title,
@@ -65,7 +81,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         status: taskToEdit.status,
         priority: taskToEdit.priority,
         assigneeId: taskToEdit.assigneeId,
-        dueDate: taskToEdit.dueDate,
+        dueDate: formatForDateTimeLocal(taskToEdit.dueDate),
         faqId: taskToEdit.faqId || '',
         reminder: taskToEdit.reminder || '',
         repeatFrequency: taskToEdit.repeatFrequency || 'none',
@@ -74,13 +90,17 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       setReplicateToAllMembers(false);
       setSelectedFile(null); // Reset file
     } else {
+      const defaultDate = preselectedDate
+        ? (preselectedDate.length === 10 ? `${preselectedDate}T12:00` : preselectedDate)
+        : formatForDateTimeLocal(new Date().toISOString());
+
       setFormData({
         title: '',
         description: '',
         status: TaskStatus.PENDING,
         priority: TaskPriority.MEDIUM,
         assigneeId: collaborators.length > 0 ? collaborators[0].id : '',
-        dueDate: preselectedDate || new Date().toISOString().split('T')[0],
+        dueDate: defaultDate,
         faqId: '',
         reminder: '',
         checklist: [],
@@ -91,7 +111,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       setCreationMode(initialMode);
       setSelectedFile(null); // Reset file
     }
-  }, [isOpen, taskToEdit, initialMode]); // Only reset when modal opens or editing task changes
+  }, [isOpen, taskToEdit, initialMode, preselectedDate]); // Added preselectedDate to deps
 
   if (!isOpen) return null;
 
@@ -525,7 +545,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   onChange={e => setFormData({ ...formData, status: e.target.value as TaskStatus })}
                 >
                   {Object.values(TaskStatus).map(s => {
-                    const isDisabled = !isManager && (s === TaskStatus.DONE || s === TaskStatus.BLOCKED);
+                    const isDisabled = !isManager && (s === TaskStatus.DONE || s === TaskStatus.ARCHIVED);
                     return (
                       <option key={s} value={s} disabled={isDisabled}>
                         {s} {isDisabled ? '(Apenas Gestores)' : ''}

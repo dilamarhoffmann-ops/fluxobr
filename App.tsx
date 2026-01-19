@@ -135,6 +135,15 @@ const App: React.FC = () => {
     mustChangePassword: data.must_change_password
   });
 
+  const mapFAQFromDB = (data: any): FAQItem => ({
+    id: data.id,
+    question: data.question,
+    answer: data.answer,
+    url: data.url,
+    pdfUrl: data.pdf_url,
+    creatorId: data.created_by
+  });
+
   // Load Initial Data
   useEffect(() => {
     if (!authUser) return;
@@ -172,7 +181,7 @@ const App: React.FC = () => {
 
         // Load FAQs
         const { data: faqsData } = await db.getAll('faqs');
-        if (faqsData) setFaqs(faqsData as FAQItem[]);
+        if (faqsData) setFaqs(faqsData.map(mapFAQFromDB));
 
         // Load Task Templates (Recursive approach simplified for now)
         const { data: templatesData } = await db.getAll('task_templates');
@@ -313,11 +322,11 @@ const App: React.FC = () => {
     const targetTasks = filteredTasks;
     const totalTasks = targetTasks.length;
     const completedTasks = targetTasks.filter(t => t.status === TaskStatus.DONE).length;
-    const blockedTasks = targetTasks.filter(t => t.status === TaskStatus.BLOCKED).length;
+    const archivedTasks = targetTasks.filter(t => t.status === TaskStatus.ARCHIVED).length;
     const overdueTasks = targetTasks.filter((t: Task) => t.status !== TaskStatus.DONE && new Date(t.dueDate) < new Date()).length;
     const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
-    return { totalTasks, completedTasks, blockedTasks, overdueTasks, completionRate };
+    return { totalTasks, completedTasks, archivedTasks, overdueTasks, completionRate };
   }, [filteredTasks]);
 
   const handleUpdateStatus = async (taskId: string, newStatus: TaskStatus) => {
@@ -327,9 +336,9 @@ const App: React.FC = () => {
     // Define se o usuário tem permissões de gestor baseado no perfil
     const isManagerProfile = currentUserProfile?.accessLevel === 'admin' || currentUserProfile?.accessLevel === 'gestor';
 
-    // Somente gestores podem mover para CONCLUÍDO ou BLOQUEADO
-    if (!isManagerProfile && (newStatus === TaskStatus.DONE || newStatus === TaskStatus.BLOCKED)) {
-      alert('Apenas gestores podem marcar tarefas como "Bloqueado" ou "Concluído".');
+    // Somente gestores podem mover para CONCLUÍDO ou ARQUIVADO
+    if (!isManagerProfile && (newStatus === TaskStatus.DONE || newStatus === TaskStatus.ARCHIVED)) {
+      alert('Apenas gestores podem marcar tarefas como "Arquivado" ou "Concluído".');
       return;
     }
 
@@ -723,9 +732,10 @@ const App: React.FC = () => {
       question: faq.question,
       answer: faq.answer,
       url: faq.url,
-      pdf_url: faq.pdfUrl
+      pdf_url: faq.pdfUrl,
+      created_by: authUser?.id
     });
-    if (!error && data) setFaqs(prev => [...prev, data[0] as FAQItem]);
+    if (!error && data) setFaqs(prev => [...prev, mapFAQFromDB(data[0])]);
   };
 
   const handleUpdateFAQ = async (id: string, updatedFaq: Omit<FAQItem, 'id'>) => {
@@ -942,7 +952,7 @@ const App: React.FC = () => {
                 { label: 'Tarefas', href: Tab.TASKS, icon: <CheckSquare className="w-5 h-5" /> },
                 { label: 'Agenda', href: Tab.AGENDA, icon: <Calendar className="w-5 h-5" /> },
                 { label: 'Empresas', href: Tab.COMPANIES, icon: <Building2 className="w-5 h-5" /> },
-                ...(currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor' ? [{ label: 'FAQ Gestor', href: Tab.FAQ, icon: <HelpCircle className="w-5 h-5" /> }] : []),
+                { label: 'FAQ', href: Tab.FAQ, icon: <HelpCircle className="w-5 h-5" /> },
                 // Configurações acessíveis para Admin e Gestor
                 ...(currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor' ? [{ label: 'Configurações', href: Tab.SETTINGS, icon: <SettingsIcon className="w-5 h-5" /> }] : []),
               ]}
@@ -1077,13 +1087,15 @@ const App: React.FC = () => {
                     onAdminResetPassword={handleAdminResetPassword}
                   />
                 )}
-                {activeTab === Tab.FAQ && (currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor') && (
+                {activeTab === Tab.FAQ && (
                   <FAQManager
                     faqs={faqs}
                     onAdd={handleAddFAQ}
                     onUpdate={handleUpdateFAQ}
                     onDelete={handleDeleteFAQ}
                     isAdmin={currentUser.accessLevel === 'admin'}
+                    userAccessLevel={currentUser.accessLevel}
+                    currentUserId={currentUser.id}
                   />
                 )}
               </>
@@ -1122,6 +1134,8 @@ const App: React.FC = () => {
         task={viewingTask}
         onClose={() => setViewingTask(null)}
         onToggleActivity={handleToggleChecklistItem}
+        collaborators={collaborators}
+        companies={companies}
       />
 
       <ReminderNotificationModal

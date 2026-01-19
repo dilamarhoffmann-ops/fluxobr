@@ -5,7 +5,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const analyzeProjectHealth = async (tasks: Task[], collaborators: Collaborator[]): Promise<string> => {
   const modelId = "gemini-3-flash-preview";
-  
+
   const projectData = JSON.stringify({
     tasks: tasks.map(t => ({
       status: t.status,
@@ -15,7 +15,7 @@ export const analyzeProjectHealth = async (tasks: Task[], collaborators: Collabo
     })),
     summary: {
       total: tasks.length,
-      blocked: tasks.filter(t => t.status === 'Bloqueado').length
+      archived: tasks.filter(t => t.status === 'Arquivado').length
     }
   });
 
@@ -24,7 +24,7 @@ export const analyzeProjectHealth = async (tasks: Task[], collaborators: Collabo
     Analise os seguintes dados do projeto em JSON: ${projectData}.
     
     Forneça uma análise estratégica concisa (máximo 3 parágrafos) focando em:
-    1. Gargalos identificados (especialmente tarefas bloqueadas ou atrasadas).
+    1. Gargalos identificados (especialmente tarefas arquivadas ou atrasadas).
     2. Alocação de recursos (alguém está sobrecarregado?).
     3. Uma sugestão de ação imediata para o líder da equipe melhorar a eficiência.
     

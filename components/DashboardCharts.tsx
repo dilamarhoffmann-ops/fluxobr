@@ -13,10 +13,10 @@ interface DashboardChartsProps {
 }
 
 const COLORS = {
-  [TaskStatus.DONE]: '#10b981', // Emerald 500
+  [TaskStatus.DONE]: '#06b6d4', // Cyan 500 (Updated from Emerald 500)
   [TaskStatus.IN_PROGRESS]: '#3b82f6', // Blue 500
   [TaskStatus.PENDING]: '#94a3b8', // Slate 400
-  [TaskStatus.BLOCKED]: '#ef4444', // Red 500
+  [TaskStatus.ARCHIVED]: '#64748b', // Slate 500 (Replaced BLOCKED)
   [TaskStatus.REVIEW]: '#f59e0b', // Amber 500
 };
 

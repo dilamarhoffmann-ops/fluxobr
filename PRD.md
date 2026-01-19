@@ -20,7 +20,7 @@ O **AgilePulse Dashboard** é uma plataforma de gestão de tarefas e colaboraç�
 ### 4.1. Gestão de Tarefas (Kanban & Lista)
 *   **Criação e Edição:** Tarefas com título, descrição, prioridade, data de entrega, responsável, empresa vinculada e checklists.
 *   **Checklists:** Sub-tarefas dentro de um card principal. O status da tarefa muda automaticamente conforme o progresso do checklist (e.g., pendente -> em progresso -> revisão).
-*   **Status Workflow:** Pendente, Em Andamento, Em Revisão, Concluído (somente gestores/admin), Bloqueado (somente gestores/admin).
+*   **Status Workflow:** Pendente, Em Andamento, Em Revisão, Concluído (somente gestores/admin), Arquivado (somente gestores/admin).
 *   **Lembretes:** Configuração de lembretes com notificações no navegador.
 *   **Anexos:** Suporte a links e uploads de arquivos.
 *   **Recorrência:** Configuração de frequência de repetição para tarefas rotineiras.

@@ -144,10 +144,10 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
 
     const getStatusColor = (status: TaskStatus) => {
         switch (status) {
-            case TaskStatus.DONE: return 'bg-emerald-500';
+            case TaskStatus.DONE: return 'bg-cyan-500';
             case TaskStatus.IN_PROGRESS: return 'bg-blue-500';
             case TaskStatus.REVIEW: return 'bg-amber-500';
-            case TaskStatus.BLOCKED: return 'bg-red-500';
+            case TaskStatus.ARCHIVED: return 'bg-slate-500';
             default: return 'bg-slate-400';
         }
     };

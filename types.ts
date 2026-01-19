@@ -4,7 +4,7 @@ export enum TaskStatus {
   IN_PROGRESS = 'Em Andamento',
   REVIEW = 'Em Revisão',
   DONE = 'Concluído',
-  BLOCKED = 'Bloqueado',
+  ARCHIVED = 'Arquivado',
 }
 
 export enum TaskPriority {
@@ -57,7 +57,7 @@ export type TaskInput = Omit<Task, 'id' | 'createdAt' | 'startedAt' | 'completed
 export interface DashboardMetrics {
   totalTasks: number;
   completedTasks: number;
-  blockedTasks: number;
+  archivedTasks: number;
   overdueTasks: number;
   completionRate: number;
 }
@@ -68,6 +68,7 @@ export interface FAQItem {
   answer: string;
   url?: string; // External link for documentation
   pdfUrl?: string; // Base64 or Blob URL for attached PDF
+  creatorId?: string;
 }
 
 export interface TemplateActivity {

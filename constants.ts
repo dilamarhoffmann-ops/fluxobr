@@ -25,9 +25,9 @@ export const INITIAL_TEAMS: string[] = [
 ];
 
 export const COMPANIES: Company[] = [
-  { id: 'comp1', name: 'TechFin Solutions', logo: 'bg-blue-600', team: 'Frontend Dev' },
-  { id: 'comp2', name: 'EcoRetail', logo: 'bg-green-600', team: 'UX Designer' },
-  { id: 'comp3', name: 'HealthPlus', logo: 'bg-red-500', team: 'Backend Dev' },
+  { id: 'comp1', name: 'TechFin Solutions', logo: 'bg-blue-600', team: ['Frontend Dev'] },
+  { id: 'comp2', name: 'EcoRetail', logo: 'bg-green-600', team: ['UX Designer'] },
+  { id: 'comp3', name: 'HealthPlus', logo: 'bg-red-500', team: ['Backend Dev'] },
 ];
 
 export const INITIAL_FAQS: FAQItem[] = [
@@ -126,7 +126,7 @@ export const INITIAL_TASKS: Task[] = [
     id: 't4',
     title: 'Testes de Integração API',
     description: 'Cobrir rotas críticas de pagamento.',
-    status: TaskStatus.BLOCKED,
+    status: TaskStatus.ARCHIVED,
     priority: TaskPriority.CRITICAL,
     assigneeId: 'c3',
     companyId: 'comp1',
@@ -175,7 +175,7 @@ export const INITIAL_TASKS: Task[] = [
     id: 't8',
     title: 'Setup CI/CD Pipeline',
     description: 'Automatizar deploy para ambiente de staging.',
-    status: TaskStatus.BLOCKED,
+    status: TaskStatus.ARCHIVED,
     priority: TaskPriority.HIGH,
     assigneeId: 'c2',
     companyId: 'comp3',

@@ -8,7 +8,10 @@ Para garantir que o sistema esteja sempre atualizado no **Vercel** e em sincroni
 
 ## 1. Atualizar o Código (Vercel)
 
-O Vercel está configurado para monitorar o seu repositório no GitHub. Toda vez que você envia mudanças para a branch principal, o Vercel inicia uma nova build automaticamente.
+O Vercel está configurado para monitorar o seu repositório no GitHub. Toda vez que você envia mudanças para a branch principal, o Vercel inicia uma nova build automaticamente. Além disso, configuramos um **GitHub Action** que sincroniza as migrações do Supabase automaticamente.
+
+## 0. Gatilho Automático (Recomendado)
+Sempre que você rodar o comando abaixo, o sistema será atualizado no Vercel e o banco de dados Supabase será sincronizado:
 
 // turbo
 ```bash

@@ -10,9 +10,11 @@ interface FAQManagerProps {
   onUpdate: (id: string, faq: Omit<FAQItem, 'id'>) => void;
   onDelete: (id: string) => void;
   isAdmin: boolean;
+  userAccessLevel: string;
+  currentUserId: string;
 }
 
-export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, onDelete, isAdmin }) => {
+export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, onDelete, isAdmin, userAccessLevel, currentUserId }) => {
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -20,6 +22,15 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
   const [attachments, setAttachments] = useState<any[]>([]);
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
   const [isExpandingAnswer, setIsExpandingAnswer] = useState(false);
+  const [expandedFaqs, setExpandedFaqs] = useState<Record<string, boolean>>({});
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const toggleFaq = (id: string) => {
+    setExpandedFaqs(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   const loadAttachments = async () => {
     setIsLoadingAttachments(true);
@@ -117,6 +128,20 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
     setFormData({ ...formData, pdfUrl: '' });
   };
 
+  const sortedFaqs = React.useMemo(() => {
+    let filtered = [...faqs];
+
+    if (searchTerm.trim()) {
+      const lowSearch = searchTerm.toLowerCase();
+      filtered = filtered.filter(f =>
+        f.question.toLowerCase().includes(lowSearch) ||
+        f.answer.toLowerCase().includes(lowSearch)
+      );
+    }
+
+    return filtered.sort((a, b) => a.question.localeCompare(b.question));
+  }, [faqs, searchTerm]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.question || !formData.answer) return;
@@ -133,8 +158,8 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
     <div className="space-y-6 animate-fade-in pb-12">
       <div className="flex justify-between items-end">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">FAQ do Gestor</h2>
-          <p className="text-slate-500">Gerencie a base de conhecimento e links úteis para as tarefas.</p>
+          <h2 className="text-2xl font-bold text-slate-900">FAQ</h2>
+          <p className="text-slate-500">Principais perguntas.</p>
         </div>
         {!isAdding && !editingId && (
           <button
@@ -142,6 +167,28 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
             className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
           >
             <Plus className="w-4 h-4" /> Nova Pergunta
+          </button>
+        )}
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative group">
+        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+          <HelpCircle className="w-5 h-5 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+        </div>
+        <input
+          type="text"
+          placeholder="Busque por assuntos, palavras-chave ou procedimentos..."
+          className="w-full pl-12 pr-12 py-4 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all outline-none text-slate-700 placeholder:text-slate-400 font-medium"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm('')}
+            className="absolute inset-y-0 right-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <X className="w-5 h-5" />
           </button>
         )}
       </div>
@@ -322,68 +369,121 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
       )}
 
       {/* FAQ List */}
-      <div className="grid gap-4">
-        {faqs.map((faq) => (
-          <div key={faq.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-100 hover:shadow-md transition-all group relative">
+      <div className="space-y-3">
+        {sortedFaqs.map((faq) => {
+          const isExpanded = expandedFaqs[faq.id];
+          const isOwner = faq.creatorId === currentUserId;
+          const canManage = isAdmin || isOwner;
 
-            {isAdmin && (
-              <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => handleEditClick(faq)}
-                  className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                  title="Editar"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => onDelete(faq.id)}
-                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Excluir"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            )}
+          return (
+            <div key={faq.id} className={`bg-white rounded-xl shadow-sm border transition-all duration-300 ${isExpanded ? 'border-indigo-200 ring-2 ring-indigo-50/50' : 'border-slate-100 hover:border-slate-200'}`}>
+              {/* Accordion Header */}
+              <div
+                onClick={() => toggleFaq(faq.id)}
+                className={`flex items-center justify-between p-5 cursor-pointer select-none group ${isExpanded ? 'bg-slate-50/50' : ''}`}
+              >
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className={`transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`}>
+                    <ChevronRight className={`w-5 h-5 ${isExpanded ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <h3 className={`text-base font-bold truncate transition-colors ${isExpanded ? 'text-indigo-600' : 'text-slate-700 group-hover:text-slate-900'}`}>
+                      {faq.question}
+                    </h3>
+                    {isOwner && (
+                      <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500 mt-0.5">Criado por você</span>
+                    )}
+                  </div>
+                </div>
 
-            <div className="flex items-start gap-4 pr-16">
-              <div className="bg-indigo-100 p-2 rounded-lg mt-1 shrink-0">
-                <HelpCircle className="w-5 h-5 text-indigo-600" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-semibold text-slate-800 mb-2 truncate pr-2">{faq.question}</h3>
-                <p className="text-slate-600 leading-relaxed text-sm mb-2">{faq.answer}</p>
-                {faq.url && (
-                  <a href={faq.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:underline">
-                    <ExternalLink className="w-3 h-3" /> Acessar Link Relacionado
-                  </a>
-                )}
-                {faq.pdfUrl && (
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 text-indigo-700 rounded text-[10px] font-bold uppercase tracking-wider">
-                        <FileText className="w-3 h-3" /> PDF Anexado
-                      </span>
-                      <button
-                        onClick={() => copyToClipboard(faq.pdfUrl!)}
-                        className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 hover:text-indigo-600 px-2 py-1 rounded hover:bg-slate-100 transition-colors"
-                        title="Copiar Link do PDF"
-                      >
-                        {copiedLink === faq.pdfUrl ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-                        {copiedLink === faq.pdfUrl ? 'Copiado!' : 'Copiar Link'}
-                      </button>
-                    </div>
+                {canManage && (
+                  <div className="flex gap-2 ml-4" onClick={e => e.stopPropagation()}>
+                    <button
+                      onClick={() => handleEditClick(faq)}
+                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-indigo-100"
+                      title="Editar"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => onDelete(faq.id)}
+                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-red-100"
+                      title="Excluir"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        ))}
 
-        {faqs.length === 0 && (
-          <div className="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
-            <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <p className="text-slate-500 font-medium">Nenhuma pergunta cadastrada.</p>
-            <p className="text-sm text-slate-400">Adicione perguntas frequentes para ajudar sua equipe.</p>
+              {/* Accordion Content */}
+              <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                <div className="px-14 pb-6 space-y-4">
+                  <div className="h-px bg-slate-100 w-full mb-4"></div>
+                  <p className="text-slate-600 leading-relaxed text-sm whitespace-pre-wrap">
+                    {faq.answer}
+                  </p>
+
+                  {(faq.url || faq.pdfUrl) && (
+                    <div className="flex flex-wrap items-center gap-3 pt-2">
+                      {faq.url && (
+                        <a
+                          href={faq.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold hover:bg-indigo-100 transition-colors"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" /> Acessar Link Externo
+                        </a>
+                      )}
+                      {faq.pdfUrl && (
+                        <div className="flex items-center gap-2">
+                          <a
+                            href={faq.pdfUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors"
+                          >
+                            <FileText className="w-3.5 h-3.5" /> Visualizar PDF
+                          </a>
+                          <button
+                            onClick={() => copyToClipboard(faq.pdfUrl!)}
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded-lg transition-colors"
+                            title="Copiar Link do PDF"
+                          >
+                            {copiedLink === faq.pdfUrl ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {sortedFaqs.length === 0 && (
+          <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-200">
+            <div className="bg-white p-4 rounded-2xl shadow-sm inline-block mb-4">
+              <BookOpen className="w-10 h-10 text-slate-300" />
+            </div>
+            <p className="text-slate-600 font-bold text-lg">
+              {searchTerm ? 'Nenhum resultado encontrado' : 'Nenhuma pergunta cadastrada'}
+            </p>
+            <p className="text-sm text-slate-400 max-w-xs mx-auto mt-2">
+              {searchTerm
+                ? `Não encontramos nada para "${searchTerm}". Tente outros termos.`
+                : 'Adicione perguntas frequentes para ajudar sua equipe.'}
+            </p>
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="mt-6 text-indigo-600 font-bold uppercase tracking-widest text-xs hover:text-indigo-700 transition-colors"
+              >
+                Limpar Busca
+              </button>
+            )}
           </div>
         )}
       </div>

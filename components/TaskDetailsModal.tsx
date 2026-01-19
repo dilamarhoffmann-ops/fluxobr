@@ -1,25 +1,41 @@
 import React from 'react';
-import { X, Check, CheckCircle2, CheckSquare } from 'lucide-react';
-import { Task } from '../types';
+import { Task, Company, Collaborator } from '../types';
+import { X, Check, CheckCircle2, CheckSquare, Building2, User, Calendar, Clock } from 'lucide-react';
 
 interface TaskDetailsModalProps {
     isOpen: boolean;
     task: Task | null;
     onClose: () => void;
     onToggleActivity: (taskId: string, index: number) => void;
+    collaborators: Collaborator[];
+    companies: Company[];
 }
 
 export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     isOpen,
     task,
     onClose,
-    onToggleActivity
+    onToggleActivity,
+    collaborators,
+    companies
 }) => {
     if (!isOpen || !task) return null;
 
     const completedCount = task.checklist?.filter(item => item.completed).length || 0;
     const totalCount = task.checklist?.length || 0;
     const progressPercentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+
+    const company = companies.find(c => c.id === task.companyId);
+    const assignee = collaborators.find(c => c.id === task.assigneeId);
+
+    const formatDate = (dateString?: string) => {
+        if (!dateString) return 'Não definida';
+        return new Date(dateString).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    };
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in">
@@ -46,6 +62,53 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    {/* Meta Information Grid */}
+                    <div className="px-8 py-6 grid grid-cols-2 gap-6 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-slate-800">
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
+                                <Building2 className="w-4 h-4" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Empresa</span>
+                            </div>
+                            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                {company?.name || 'Nenhuma'}
+                            </p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
+                                <User className="w-4 h-4" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Responsável</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {assignee?.avatar && (
+                                    <img src={assignee.avatar} alt="" className="w-5 h-5 rounded-full object-cover" />
+                                )}
+                                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                    {assignee?.name || 'Não atribuído'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
+                                <Clock className="w-4 h-4" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Data da Criação</span>
+                            </div>
+                            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                {formatDate(task.createdAt)}
+                            </p>
+                        </div>
+
+                        <div className="space-y-1">
+                            <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
+                                <Calendar className="w-4 h-4" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Data do Vencimento</span>
+                            </div>
+                            <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                                {formatDate(task.dueDate)}
+                            </p>
+                        </div>
+                    </div>
                     {/* Progress Bar Section */}
                     {totalCount > 0 && (
                         <div className="px-8 py-6 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-700">

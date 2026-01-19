@@ -57,7 +57,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
     { id: TaskStatus.IN_PROGRESS, title: 'Em Andamento', color: 'bg-green-600', borderColor: 'bg-green-600', textColor: 'text-white' },
     { id: TaskStatus.REVIEW, title: 'Em Revisão', color: 'bg-yellow-400', borderColor: 'bg-yellow-400', textColor: 'text-slate-900' },
     { id: TaskStatus.DONE, title: 'Concluído', color: 'bg-cyan-500', borderColor: 'bg-cyan-500', textColor: 'text-white' },
-    { id: TaskStatus.BLOCKED, title: 'Bloqueado', color: 'bg-red-600', borderColor: 'bg-red-600', textColor: 'text-white' },
+    { id: TaskStatus.ARCHIVED, title: 'Arquivado', color: 'bg-slate-500', borderColor: 'bg-slate-500', textColor: 'text-white' },
   ];
 
   const groupedTasks = useMemo(() => {
@@ -89,8 +89,9 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
     const task = tasks.find(t => t.id === taskId);
     const hasChecklist = task?.checklist && task.checklist.length > 0;
 
-    if (!isManager && (newStatus === TaskStatus.DONE || newStatus === TaskStatus.BLOCKED)) {
-      alert('Apenas gestores podem mover tarefas para "Concluído" ou "Bloqueado".');
+    // Somente gestores podem mover para CONCLUÍDO ou ARQUIVADO
+    if (!isManager && (newStatus === TaskStatus.DONE || newStatus === TaskStatus.ARCHIVED)) {
+      alert('Apenas gestores podem mover tarefas para "Concluído" ou "Arquivado".');
       return;
     }
 
@@ -187,7 +188,8 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
                     </span>
                     <div className="flex flex-col">
                       <h4 className="font-bold text-sm uppercase tracking-wider leading-none">{column.title}</h4>
-                      {(column.id === TaskStatus.DONE || column.id === TaskStatus.BLOCKED) && (
+                      {/* Badge "Somente Gestores" para Concluído e Arquivado */}
+                      {(column.id === TaskStatus.DONE || column.id === TaskStatus.ARCHIVED) && (
                         <span className="text-[8px] font-black opacity-70 uppercase tracking-tighter mt-0.5">Apenas Gestores</span>
                       )}
                     </div>
