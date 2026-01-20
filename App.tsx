@@ -91,6 +91,8 @@ const App: React.FC = () => {
     repeatFrequency: data.repeat_frequency || 'none',
     creatorId: data.creator_id,
     attachmentUrl: data.attachment_url,
+    isReplicated: data.is_replicated,
+    notes: data.notes || '',
   });
 
   const mapCompanyFromDB = (data: any): Company => {
@@ -280,22 +282,30 @@ const App: React.FC = () => {
       // Regra 0 (Prioridade Máxima): Se sou o CRIADOR ou RESPONSÁVEL, eu sempre vejo.
       if (t.assigneeId === currentUserProfile.id || t.creatorId === currentUserProfile.id) return true;
 
-      // Se o usuário for um COLABORADOR comum, ele visualiza APENAS suas próprias tarefas (Regra 0).
-      // A visibilidade de equipe (Regras 3 e 4) aplica-se apenas a GESTORES ou ADMINS.
-      const isManagerOrAdmin = currentUserProfile.accessLevel === 'gestor' || currentUserProfile.accessLevel === 'admin';
-      if (!isManagerOrAdmin) return false;
-
-      // Regra 3: Atribuído a alguém da minha equipe (mesmo squad) - VISÍVEL APENAS PARA GESTORES
+      // Regra 3: Atribuído a alguém da minha equipe (mesmo squad) - VISÍVEL APENAS SE FOR REPLICADA OU PARA GESTORES
       if (t.assigneeId) {
         const assigneeRole = colabRoleMap.get(t.assigneeId);
-        if (assigneeRole === userTeam) return true;
+        if (assigneeRole === userTeam) {
+          // Se for uma tarefa REPLICADA, todos da equipe veem sempre.
+          if (t.isReplicated) return true;
+          // Se NÃO for REPLICADA, apenas Gestores/Admins veem tarefas de outros membros.
+          if (currentUserProfile.accessLevel === 'gestor' || currentUserProfile.accessLevel === 'admin') return true;
+        }
       }
 
-      // Regra 4: Criado por alguém da minha equipe (mesmo squad) - VISÍVEL APENAS PARA GESTORES
+      // Regra 4: Criado por alguém da minha equipe (mesmo squad) - VISÍVEL APENAS SE FOR REPLICADA OU PARA GESTORES
       if (t.creatorId) {
         const creatorRole = colabRoleMap.get(t.creatorId);
-        if (creatorRole === userTeam) return true;
+        if (creatorRole === userTeam) {
+          if (t.isReplicated) return true;
+          if (currentUserProfile.accessLevel === 'gestor' || currentUserProfile.accessLevel === 'admin') return true;
+        }
       }
+
+      // A visibilidade de equipe (Regras 3 e 4) agora aplica-se a todos do mesmo squad.
+      // Restrições adicionais apenas para não-gestores abaixo, se necessário.
+      const isManagerOrAdmin = currentUserProfile.accessLevel === 'gestor' || currentUserProfile.accessLevel === 'admin';
+      if (!isManagerOrAdmin) return false;
 
       // Regra 5: É um lembrete (não depende de empresa, exibição baseada em equipe já coberta acima, mas reforçando)
       // Regra 5: É um lembrete (não depende de empresa, exibição baseada em equipe já coberta acima, mas reforçando)
@@ -433,6 +443,20 @@ const App: React.FC = () => {
     }
   };
 
+  const handleUpdateNotes = async (taskId: string, notes: string) => {
+    const { error } = await db.update('tasks', taskId, { notes });
+    if (!error) {
+      setTasks(prev => {
+        const updatedTasks = prev.map(t => t.id === taskId ? { ...t, notes } : t);
+        if (viewingTask?.id === taskId) {
+          const updatedTask = updatedTasks.find(t => t.id === taskId);
+          if (updatedTask) setViewingTask(updatedTask);
+        }
+        return updatedTasks;
+      });
+    }
+  };
+
   const handleOpenCreateModal = (date?: string, mode: 'nova' | 'modelo' | 'lembrete' = 'nova') => {
     setEditingTask(null);
     setPreselectedDate(date || null);
@@ -499,6 +523,7 @@ const App: React.FC = () => {
                 repeat_frequency: taskInput.repeatFrequency || 'none',
                 started_at: taskInput.status === TaskStatus.IN_PROGRESS ? now : null,
                 attachment_url: taskInput.attachmentUrl || null,
+                is_replicated: true,
               });
             });
           } else {
@@ -516,7 +541,8 @@ const App: React.FC = () => {
               reminder: taskInput.reminder || null,
               checklist: taskInput.checklist || [],
               repeat_frequency: taskInput.repeatFrequency || 'none',
-              started_at: taskInput.status === TaskStatus.IN_PROGRESS ? now : null
+              started_at: taskInput.status === TaskStatus.IN_PROGRESS ? now : null,
+              is_replicated: false
             });
           }
         });
@@ -1135,8 +1161,10 @@ const App: React.FC = () => {
         task={viewingTask}
         onClose={() => setViewingTask(null)}
         onToggleActivity={handleToggleChecklistItem}
+        onUpdateNotes={handleUpdateNotes}
         collaborators={collaborators}
         companies={companies}
+        currentUserId={authUser?.id}
       />
 
       <ReminderNotificationModal

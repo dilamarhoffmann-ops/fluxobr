@@ -1,6 +1,6 @@
 import React from 'react';
 import { Task, Company, Collaborator } from '../types';
-import { X, Check, CheckCircle2, CheckSquare, Building2, User, Calendar, Clock } from 'lucide-react';
+import { X, Check, CheckCircle2, CheckSquare, Building2, User, Calendar, Clock, MessageSquare, Save } from 'lucide-react';
 import { Avatar } from './ui/Avatar';
 
 interface TaskDetailsModalProps {
@@ -8,8 +8,10 @@ interface TaskDetailsModalProps {
     task: Task | null;
     onClose: () => void;
     onToggleActivity: (taskId: string, index: number) => void;
+    onUpdateNotes: (taskId: string, notes: string) => void;
     collaborators: Collaborator[];
     companies: Company[];
+    currentUserId?: string;
 }
 
 export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
@@ -17,9 +19,20 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     task,
     onClose,
     onToggleActivity,
+    onUpdateNotes,
     collaborators,
-    companies
+    companies,
+    currentUserId
 }) => {
+    const [notes, setNotes] = React.useState('');
+    const [isSaving, setIsSaving] = React.useState(false);
+
+    React.useEffect(() => {
+        if (task) {
+            setNotes(task.notes || '');
+        }
+    }, [task]);
+
     if (!isOpen || !task) return null;
 
     const completedCount = task.checklist?.filter(item => item.completed).length || 0;
@@ -28,6 +41,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
     const company = companies.find(c => c.id === task.companyId);
     const assignee = collaborators.find(c => c.id === task.assigneeId);
+    const isAssignee = currentUserId === task.assigneeId;
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return 'Não definida';
@@ -36,6 +50,12 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             month: '2-digit',
             year: 'numeric'
         });
+    };
+
+    const handleSaveNotes = async () => {
+        setIsSaving(true);
+        await onUpdateNotes(task.id, notes);
+        setIsSaving(false);
     };
 
     return (
@@ -64,7 +84,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                     {/* Meta Information Grid */}
-                    <div className="px-8 py-6 grid grid-cols-2 gap-6 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-slate-800">
+                    <div className="px-8 py-4 grid grid-cols-2 gap-4 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-slate-800">
                         <div className="space-y-1">
                             <div className="flex items-center gap-2 text-slate-400 dark:text-slate-500">
                                 <Building2 className="w-4 h-4" />
@@ -112,19 +132,19 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
                     {/* Progress Bar Section */}
                     {totalCount > 0 && (
-                        <div className="px-8 py-6 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-700">
-                            <div className="flex items-center justify-between mb-3">
+                        <div className="px-8 py-4 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-700">
+                            <div className="flex items-center justify-between mb-2.5">
                                 <div className="flex items-center gap-2">
                                     <CheckSquare className="w-4 h-4 text-indigo-500" />
                                     <span className="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">
                                         Progresso da Tarefa
                                     </span>
                                 </div>
-                                <span className={`text-sm font-bold ${progressPercentage === 100 ? 'text-emerald-500' : 'text-indigo-600 dark:text-indigo-400'}`}>
-                                    {completedCount} de {totalCount} concluídas ({Math.round(progressPercentage)}%)
+                                <span className={`text-xs font-bold ${progressPercentage === 100 ? 'text-emerald-500' : 'text-indigo-600 dark:text-indigo-400'}`}>
+                                    {completedCount}/{totalCount} concluídas ({Math.round(progressPercentage)}%)
                                 </span>
                             </div>
-                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-4 p-1 shadow-inner">
+                            <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 p-0.5 shadow-inner">
                                 <div
                                     className={`h-full transition-all duration-700 ease-out rounded-full shadow-lg ${progressPercentage === 100
                                         ? 'bg-gradient-to-r from-emerald-400 to-emerald-600'
@@ -136,12 +156,48 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                         </div>
                     )}
 
+                    {/* Notes Section (Observação) */}
+                    <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                <MessageSquare className="w-4 h-4 text-amber-500" />
+                                <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">
+                                    Observação do Responsável
+                                </h4>
+                            </div>
+                            {isAssignee && notes !== (task.notes || '') && (
+                                <button
+                                    onClick={handleSaveNotes}
+                                    disabled={isSaving}
+                                    className="flex items-center gap-1.5 px-3 py-1 bg-amber-500 text-white text-[10px] font-black uppercase rounded-lg hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                                >
+                                    <Save className="w-3 h-3" />
+                                    {isSaving ? 'Salvando...' : 'Salvar Nota'}
+                                </button>
+                            )}
+                        </div>
+                        {isAssignee ? (
+                            <textarea
+                                value={notes}
+                                onChange={(e) => setNotes(e.target.value)}
+                                placeholder="Adicione observações sobre o andamento desta tarefa..."
+                                className="w-full h-24 p-4 bg-amber-50/30 dark:bg-slate-800/50 border-2 border-amber-100/50 dark:border-slate-700 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-amber-400 dark:focus:border-amber-500 transition-all resize-none"
+                            />
+                        ) : (
+                            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-700 rounded-2xl">
+                                <p className="text-sm font-medium text-slate-600 dark:text-slate-300 italic whitespace-pre-wrap">
+                                    {task.notes || 'Nenhuma observação registrada pelo responsável.'}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+
                     {/* Checklist as Tasks */}
                     <div className="p-8">
                         {task.checklist && task.checklist.length > 0 ? (
                             <div className="space-y-2">
                                 <div className="flex items-center justify-between mb-4">
-                                    <h4 className="text-sm font-black uppercase tracking-widest text-slate-400">
+                                    <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">
                                         Checklist de Atividades
                                     </h4>
                                 </div>
@@ -155,15 +211,13 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                             : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-xl hover:-translate-y-0.5'
                                             }`}
                                     >
-                                        {/* Checkbox Icon */}
                                         <div className={`flex-shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${item.completed
-                                            ? 'bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-200 dark:shadow-none animate-bounce-short'
+                                            ? 'bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-200'
                                             : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 group-hover:border-indigo-500 group-hover:rotate-12'
                                             }`}>
                                             {item.completed && <Check className="w-3.5 h-3.5 text-white stroke-[4]" />}
                                         </div>
 
-                                        {/* Activity Text */}
                                         <div className="flex-1 min-w-0">
                                             <p className={`text-sm font-bold transition-all whitespace-pre-wrap ${item.completed
                                                 ? 'text-emerald-800 dark:text-emerald-400 line-through decoration-emerald-500/50'
@@ -172,25 +226,13 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                                 {item.title}
                                             </p>
                                         </div>
-
-                                        {/* Completion Indicator */}
-                                        <div className={`transition-all duration-300 ${item.completed ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-4'}`}>
-                                            <div className="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 px-3 py-1 rounded-full text-[10px] font-black uppercase">
-                                                Finalizado
-                                            </div>
-                                        </div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-16 bg-slate-50 dark:bg-slate-800/20 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                                    <CheckCircle2 className="w-10 h-10 text-slate-300" />
-                                </div>
-                                <h5 className="text-lg font-bold text-slate-700 dark:text-slate-300 mb-2">Nenhuma tarefa listada</h5>
-                                <p className="text-slate-500 dark:text-slate-400 text-sm max-w-xs mx-auto">
-                                    Esta tarefa principal não possui atividades pendentes no checklist.
-                                </p>
+                            <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/20 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                                <CheckCircle2 className="w-10 h-10 text-slate-300 mx-auto mb-4" />
+                                <h5 className="text-sm font-bold text-slate-700 dark:text-slate-300">Nenhuma tarefa listada no checklist.</h5>
                             </div>
                         )}
                     </div>

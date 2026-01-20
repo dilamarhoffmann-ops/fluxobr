@@ -15,9 +15,9 @@ Deno.serve(async (req) => {
     if (testEmail) {
         console.log(`Disparando e-mail de teste para: ${testEmail}`)
         const emailContent = {
-            from: 'AgilePulse <onboarding@resend.dev>',
+            from: 'FluxoBR <onboarding@resend.dev>',
             to: testEmail,
-            subject: '🧪 Teste de Integração AgilePulse',
+            subject: '🧪 Teste de Integração FluxoBR',
             html: `<h1>Conexão Bem-Sucedida!</h1><p>Este é um e-mail de teste disparado manualmente para validar a integração entre o Supabase e o Resend.</p>`,
         }
 
@@ -85,12 +85,12 @@ Deno.serve(async (req) => {
             // 3. Enviar e-mail para cada gestor
             for (const manager of managers) {
                 const emailContent = {
-                    from: 'AgilePulse <onboarding@resend.dev>', // Usar domínio verificado em produção
+                    from: 'FluxoBR <onboarding@resend.dev>', // Usar domínio verificado em produção
                     to: manager.email,
                     subject: `🔔 Alerta de Prazo: Tarefa "${task.title}"`,
                     html: `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; rounded: 12px;">
-              <h2 style="color: #1e293b; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">Monitoramento de Prazos AgilePulse</h2>
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+              <h2 style="color: #1e293b; border-bottom: 2px solid #3b82f6; padding-bottom: 10px;">Monitoramento de Prazos FluxoBR</h2>
               <p>Olá <strong>${manager.full_name}</strong>,</p>
               <p>A seguinte tarefa atingiu a data de vencimento definida:</p>
               
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
               <p>Por favor, acesse o dashboard para revisar a entrega ou ajustar o cronograma, se necessário.</p>
               
               <div style="margin-top: 30px; font-size: 12px; color: #64748b; text-align: center;">
-                Este é um e-mail automático enviado pelo AgilePulse Dashboard.
+                Este é um e-mail automático enviado pelo FluxoBR Dashboard.
               </div>
             </div>
           `,

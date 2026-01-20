@@ -50,6 +50,8 @@ export interface Task {
   repeatFrequency?: 'none' | 'daily' | 'weekly' | 'monthly';
   creatorId?: string;
   attachmentUrl?: string; // URL for attached document (e.g. PDF)
+  isReplicated?: boolean;
+  notes?: string;
 }
 
 export type TaskInput = Omit<Task, 'id' | 'createdAt' | 'startedAt' | 'completedAt' | 'companyId'>;
