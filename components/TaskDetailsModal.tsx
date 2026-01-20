@@ -1,6 +1,7 @@
 import React from 'react';
 import { Task, Company, Collaborator } from '../types';
 import { X, Check, CheckCircle2, CheckSquare, Building2, User, Calendar, Clock } from 'lucide-react';
+import { Avatar } from './ui/Avatar';
 
 interface TaskDetailsModalProps {
     isOpen: boolean;
@@ -50,7 +51,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                         </div>
                         <h3 className="text-2xl font-black text-white mb-2 leading-tight">{task.title}</h3>
                         {task.description && (
-                            <p className="text-slate-300 text-sm font-medium leading-relaxed max-w-lg">{task.description}</p>
+                            <p className="text-slate-300 text-sm font-medium leading-relaxed max-w-lg whitespace-pre-wrap">{task.description}</p>
                         )}
                     </div>
                     <button
@@ -80,9 +81,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                 <span className="text-[10px] font-black uppercase tracking-widest">Responsável</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                {assignee?.avatar && (
-                                    <img src={assignee.avatar} alt="" className="w-5 h-5 rounded-full object-cover" />
-                                )}
+                                <Avatar name={assignee?.name} src={assignee?.avatar} size="xs" className="ring-0" />
                                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
                                     {assignee?.name || 'Não atribuído'}
                                 </p>
@@ -109,6 +108,8 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                             </p>
                         </div>
                     </div>
+
+
                     {/* Progress Bar Section */}
                     {totalCount > 0 && (
                         <div className="px-8 py-6 bg-slate-50 dark:bg-slate-800/40 border-b border-slate-100 dark:border-slate-700">
@@ -138,8 +139,8 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                     {/* Checklist as Tasks */}
                     <div className="p-8">
                         {task.checklist && task.checklist.length > 0 ? (
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between mb-6">
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between mb-4">
                                     <h4 className="text-sm font-black uppercase tracking-widest text-slate-400">
                                         Checklist de Atividades
                                     </h4>
@@ -149,22 +150,22 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                     <div
                                         key={index}
                                         onClick={() => onToggleActivity(task.id, index)}
-                                        className={`group flex items-center gap-4 p-5 rounded-2xl border-2 transition-all cursor-pointer ${item.completed
+                                        className={`group flex items-center gap-3 p-2.5 rounded-xl border-2 transition-all cursor-pointer ${item.completed
                                             ? 'bg-emerald-50/50 dark:bg-emerald-900/5 border-emerald-100 dark:border-emerald-800/50 grayscale-[0.5] opacity-80'
                                             : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:shadow-xl hover:-translate-y-0.5'
                                             }`}
                                     >
                                         {/* Checkbox Icon */}
-                                        <div className={`flex-shrink-0 w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all ${item.completed
+                                        <div className={`flex-shrink-0 w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${item.completed
                                             ? 'bg-emerald-500 border-emerald-500 shadow-lg shadow-emerald-200 dark:shadow-none animate-bounce-short'
                                             : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 group-hover:border-indigo-500 group-hover:rotate-12'
                                             }`}>
-                                            {item.completed && <Check className="w-5 h-5 text-white stroke-[4]" />}
+                                            {item.completed && <Check className="w-3.5 h-3.5 text-white stroke-[4]" />}
                                         </div>
 
                                         {/* Activity Text */}
                                         <div className="flex-1 min-w-0">
-                                            <p className={`text-base font-bold transition-all ${item.completed
+                                            <p className={`text-sm font-bold transition-all whitespace-pre-wrap ${item.completed
                                                 ? 'text-emerald-800 dark:text-emerald-400 line-through decoration-emerald-500/50'
                                                 : 'text-slate-800 dark:text-slate-100'
                                                 }`}>

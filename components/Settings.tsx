@@ -3,6 +3,7 @@ import { Shield, ShieldAlert, Check, Users, Trash2, Plus, Briefcase, Layers, Loc
 import { Collaborator } from '../types';
 import { ADMIN_PASSWORD } from '../constants';
 import Papa from 'papaparse';
+import { Avatar } from './ui/Avatar';
 
 interface SettingsProps {
   isManager: boolean;
@@ -369,7 +370,7 @@ export const Settings: React.FC<SettingsProps> = ({
               {collaborators.map((collab) => (
                 <div key={collab.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
                   <div className="flex items-center gap-3 flex-1">
-                    <img src={collab.avatar} alt={collab.name} className="w-10 h-10 rounded-full border border-white shadow-sm" />
+                    <Avatar name={collab.name} src={collab.avatar} size="md" />
                     <div>
                       <p className="font-medium text-slate-800">{collab.name}</p>
                       <p className="text-xs text-slate-400">{collab.email}</p>

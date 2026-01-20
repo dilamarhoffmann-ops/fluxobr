@@ -111,7 +111,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       setCreationMode(initialMode);
       setSelectedFile(null); // Reset file
     }
-  }, [isOpen, taskToEdit, initialMode, preselectedDate]); // Added preselectedDate to deps
+  }, [isOpen, taskToEdit, initialMode, preselectedDate, companies]); // Added companies to deps
 
   if (!isOpen) return null;
 
@@ -141,8 +141,12 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       setIsUploading(false);
     }
 
-    if (creationMode === 'modelo' && selectedTemplateTaskIds.length > 0) {
-      // Modo template: criar UMA tarefa com todas as atividades agregadas
+    if (creationMode === 'modelo') {
+      if (selectedTemplateTaskIds.length === 0) {
+        alert('Por favor, selecione pelo menos uma tarefa do modelo para agregar.');
+        return;
+      }
+
       const template = taskTemplates.find(t => t.id === selectedTemplateId);
       if (!template) return;
 
@@ -152,10 +156,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         return;
       }
 
-      if (selectedCompanyIds.length === 0) {
-        alert('Selecione pelo menos uma empresa.');
-        return;
-      }
+
 
       // Agrega as tarefas e suas atividades
       const allActivities: { title: string; completed: boolean }[] = [];
@@ -178,7 +179,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       // Cria uma única tarefa com o nome do template e todas as atividades
       const singleTask: TaskInput = {
         title: template.name, // Nome do template como título da tarefa
-        description: `Tarefas: ${taskTitles.join(', ')}`, // Lista as tarefas incluídas
+        description: `Tarefas:\n- ${taskTitles.join('\n- ')}`, // Lista as tarefas incluídas verticalmente
         status: TaskStatus.PENDING,
         priority: formData.priority,
         assigneeId: formData.assigneeId,
@@ -210,10 +211,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         return;
       }
 
-      if (!isReminder && selectedCompanyIds.length === 0) {
-        alert('Por favor, selecione pelo menos uma empresa.');
-        return;
-      }
+
 
 
 
@@ -313,9 +311,23 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   className="w-full px-3 py-2 text-sm border border-indigo-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   value={selectedTemplateId}
                   onChange={(e) => {
-                    setSelectedTemplateId(e.target.value);
-                    setSelectedTemplateTaskIds([]);
-                    setTaskActivities({});
+                    const templateId = e.target.value;
+                    setSelectedTemplateId(templateId);
+                    const template = taskTemplates.find(t => t.id === templateId);
+                    if (template) {
+                      // Auto-select all tasks from the template
+                      setSelectedTemplateTaskIds(template.tasks.map((tk: any) => tk.id));
+
+                      // Auto-select all activities for those tasks
+                      const initialActivities: Record<string, string[]> = {};
+                      template.tasks.forEach((tk: any) => {
+                        initialActivities[tk.id] = tk.activities.map((a: any) => a.title);
+                      });
+                      setTaskActivities(initialActivities);
+                    } else {
+                      setSelectedTemplateTaskIds([]);
+                      setTaskActivities({});
+                    }
                   }}
                 >
                   <option value="">Escolha um modelo...</option>
@@ -333,33 +345,36 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                   </div>
 
                   <div className="space-y-2 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
-                    {taskTemplates.find(t => t.id === selectedTemplateId)?.tasks.map((tk: any) => {
-                      const isSelected = selectedTemplateTaskIds.includes(tk.id);
-                      const selectedActivitiesForTask = taskActivities[tk.id] || [];
+                    {taskTemplates.find(t => t.id === selectedTemplateId)?.tasks?.length > 0 ? (
+                      taskTemplates.find(t => t.id === selectedTemplateId)?.tasks.map((tk: any) => {
+                        const isSelected = selectedTemplateTaskIds.includes(tk.id);
+                        const selectedActivitiesForTask = taskActivities[tk.id] || [];
 
-                      return (
-                        <div key={tk.id} className={`border rounded-lg transition-all ${isSelected ? 'border-indigo-300 bg-white shadow-sm' : 'border-slate-200 bg-slate-50/50'}`}>
-                          <div className="p-3">
+                        return (
+                          <div
+                            key={tk.id}
+                            className={`p-3 border rounded-lg cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isSelected ? 'border-indigo-300 bg-white shadow-sm' : 'border-slate-200 bg-slate-50/50'}`}
+                            onClick={() => {
+                              setSelectedTemplateTaskIds(prev => {
+                                if (prev.includes(tk.id)) {
+                                  // Remove task and its activities
+                                  const newActivities = { ...taskActivities };
+                                  delete newActivities[tk.id];
+                                  setTaskActivities(newActivities);
+                                  return prev.filter(id => id !== tk.id);
+                                } else {
+                                  // Add task and initialize with all activities selected
+                                  setTaskActivities(prev => ({
+                                    ...prev,
+                                    [tk.id]: tk.activities?.map((a: any) => a.title) || []
+                                  }));
+                                  return [...prev, tk.id];
+                                }
+                              });
+                            }}
+                          >
                             <label className="flex items-start gap-3 cursor-pointer group">
                               <div
-                                onClick={() => {
-                                  setSelectedTemplateTaskIds(prev => {
-                                    if (prev.includes(tk.id)) {
-                                      // Remove task and its activities
-                                      const newActivities = { ...taskActivities };
-                                      delete newActivities[tk.id];
-                                      setTaskActivities(newActivities);
-                                      return prev.filter(id => id !== tk.id);
-                                    } else {
-                                      // Add task and initialize with all activities selected
-                                      setTaskActivities(prev => ({
-                                        ...prev,
-                                        [tk.id]: tk.activities.map((a: any) => a.title)
-                                      }));
-                                      return [...prev, tk.id];
-                                    }
-                                  });
-                                }}
                                 className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all flex-shrink-0 mt-0.5 ${isSelected ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 bg-white'}`}
                               >
                                 {isSelected && <CheckSquare className="w-3.5 h-3.5 text-white" />}
@@ -372,19 +387,20 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                                 <div className="flex items-center gap-2 mt-1">
                                   <span className="text-[9px] font-bold bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded uppercase">{tk.priority || 'Média'}</span>
                                   <span className="text-[9px] text-slate-400">•</span>
-                                  <span className="text-[9px] text-slate-500">{tk.activities.length} atividade{tk.activities.length !== 1 ? 's' : ''}</span>
+                                  <span className="text-[9px] text-slate-500">{tk.activities?.length || 0} atividade{tk.activities?.length !== 1 ? 's' : ''}</span>
                                 </div>
                               </div>
                             </label>
 
-                            {isSelected && tk.activities.length > 0 && (
-                              <div className="mt-3 pt-3 border-t border-slate-100 animate-fade-in">
+                            {isSelected && tk.activities?.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-slate-100 animate-fade-in" onClick={e => e.stopPropagation()}>
                                 <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">Atividades do Checklist:</p>
                                 <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
                                   {tk.activities.map((act: any) => (
                                     <label key={act.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-indigo-50 transition-colors cursor-pointer group/activity">
                                       <div
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                          e.stopPropagation();
                                           setTaskActivities(prev => {
                                             const currentActivities = prev[tk.id] || [];
                                             return {
@@ -406,9 +422,13 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                               </div>
                             )}
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    ) : (
+                      <div className="py-8 text-center bg-white dark:bg-slate-800 rounded-lg border border-dashed border-slate-200 dark:border-slate-700">
+                        <p className="text-sm text-slate-500">Este modelo não possui tarefas cadastradas.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -619,7 +639,10 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={(creationMode !== 'lembrete' && selectedCompanyIds.length === 0) || (creationMode === 'modelo' && selectedTemplateTaskIds.length === 0)}
+              disabled={
+                (creationMode === 'modelo' && !selectedTemplateId) ||
+                (creationMode !== 'modelo' && !formData.title)
+              }
               className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm shadow-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {taskToEdit ? 'Salvar Alterações' : creationMode === 'modelo' && selectedTemplateTaskIds.length > 0 ? 'Criar Tarefa com Atividades' : creationMode === 'lembrete' ? 'Salvar Lembrete' : 'Criar Tarefa'}

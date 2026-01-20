@@ -4,6 +4,7 @@ import { Task, Collaborator, TaskStatus, TaskPriority, Company, FAQItem } from '
 import { Filter, Search, User, Calendar, PlusCircle, Trash2, Clock, Building2, HelpCircle, Edit2, GripVertical, Check, Paperclip } from 'lucide-react';
 import { FAQViewModal } from './FAQViewModal';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { Avatar } from './ui/Avatar';
 
 interface TaskManagementProps {
   tasks: Task[];
@@ -249,7 +250,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
 
                           <h5 className="font-bold text-slate-800 dark:text-slate-100 leading-tight mb-2 pl-2 pr-4">{task.title}</h5>
 
-                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mb-3 pl-2 pr-2 leading-relaxed">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-6 mb-3 pl-2 pr-2 leading-relaxed whitespace-pre-wrap">
                             {task.description}
                           </p>
 
@@ -322,7 +323,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
                                   <Paperclip className="w-4 h-4" />
                                 </a>
                               )}
-                              <img src={assignee?.avatar} alt={assignee?.name} title={assignee?.name} className="w-7 h-7 rounded-full ring-2 ring-white dark:ring-slate-800 shadow-sm" />
+                              <Avatar name={assignee?.name} src={assignee?.avatar} size="sm" title={assignee?.name} />
                             </div>
                           </div>
                         </div>

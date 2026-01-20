@@ -21,6 +21,7 @@ import { AgendaView } from './components/AgendaView';
 import { ReminderNotificationModal } from './components/ReminderNotificationModal';
 import { ForceChangePasswordModal } from './components/ForceChangePasswordModal';
 import { HelpModal } from './components/HelpModal';
+import { Avatar } from './components/ui/Avatar';
 
 enum Tab {
   DASHBOARD = 'dashboard',
@@ -990,7 +991,7 @@ const App: React.FC = () => {
             </button>
             <ThemeToggle />
             <div className="flex items-center gap-3 pl-6 border-l border-slate-200 dark:border-slate-700">
-              <img src={currentUser.avatar} alt="User" className="w-10 h-10 rounded-full ring-2 ring-blue-50 dark:ring-slate-700" />
+              <Avatar name={currentUser.name} src={currentUser.avatar} size="md" />
               <div className="hidden md:block">
                 <p className="font-bold text-slate-800 dark:text-slate-100 text-sm">{currentUser.name}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{currentUser.role}</p>
