@@ -62,13 +62,35 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       if (!isoString) return '';
       try {
         const date = new Date(isoString);
-        // Correctly handle local time for YYYY-MM-DDTHH:mm format
+        let hours = date.getHours();
+        let minutes = date.getMinutes();
+
+        // Aplicar regras de negócio (08:00 - 18:00)
+        if (hours < 8) {
+          hours = 8;
+          minutes = 0;
+        } else if (hours > 18 || (hours === 18 && minutes > 0)) {
+          hours = 18;
+          minutes = 0;
+        }
+
+        // Intervalos de 15 minutos (00, 15, 30, 45)
+        minutes = Math.round(minutes / 15) * 15;
+        if (minutes === 60) {
+          if (hours < 18) {
+            hours += 1;
+            minutes = 0;
+          } else {
+            minutes = 45;
+          }
+        }
+
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        return `${year}-${month}-${day}T${hours}:${minutes}`;
+        const hStr = String(hours).padStart(2, '0');
+        const mStr = String(minutes).padStart(2, '0');
+        return `${year}-${month}-${day}T${hStr}:${mStr}`;
       } catch (e) {
         return '';
       }
@@ -91,7 +113,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       setSelectedFile(null); // Reset file
     } else {
       const defaultDate = preselectedDate
-        ? (preselectedDate.length === 10 ? `${preselectedDate}T12:00` : preselectedDate)
+        ? (preselectedDate.length === 10 ? `${preselectedDate}T12:00` : formatForDateTimeLocal(preselectedDate))
         : formatForDateTimeLocal(new Date().toISOString());
 
       setFormData({
@@ -577,42 +599,88 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                <User className="w-4 h-4 text-slate-400" /> Responsável
-              </label>
-              <select
-                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-50"
-                value={formData.assigneeId}
-                onChange={e => setFormData({ ...formData, assigneeId: e.target.value })}
-                disabled={replicateToAllMembers}
-              >
-                <option value="">Selecione um responsável...</option>
-                {collaborators.length === 0 && <option value="" disabled>Nenhum colaborador disponível</option>}
-                {collaborators.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-slate-400" /> Prazo (Data e Hora)
-              </label>
-              <input
-                type="datetime-local"
-                required
-                className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                value={formData.dueDate}
-                onChange={e => setFormData({ ...formData, dueDate: e.target.value })}
-              />
-            </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
+              <User className="w-4 h-4 text-slate-400" /> Responsável
+            </label>
+            <select
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-50"
+              value={formData.assigneeId}
+              onChange={e => setFormData({ ...formData, assigneeId: e.target.value })}
+              disabled={replicateToAllMembers}
+            >
+              <option value="">Selecione um responsável...</option>
+              {collaborators.length === 0 && <option value="" disabled>Nenhum colaborador disponível</option>}
+              {collaborators.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </div>
 
+          <div className="space-y-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700">
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar className="w-4 h-4 text-indigo-500" />
+              <label className="text-sm font-bold text-slate-700 dark:text-slate-200">Definir Prazo</label>
+            </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Data</label>
+                <input
+                  type="date"
+                  required
+                  className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                  value={formData.dueDate.split('T')[0]}
+                  onChange={e => {
+                    const date = e.target.value;
+                    const time = formData.dueDate.split('T')[1] || '08:00';
+                    setFormData({ ...formData, dueDate: `${date}T${time}` });
+                  }}
+                />
+              </div>
 
+              <div className="space-y-1">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Horário Agendado</label>
+                <div className="flex items-center gap-2">
+                  <select
+                    className="flex-1 px-2 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm font-medium"
+                    value={formData.dueDate.split('T')[1]?.split(':')[0] || '08'}
+                    onChange={e => {
+                      const hour = e.target.value;
+                      const date = formData.dueDate.split('T')[0];
+                      const minutes = hour === '18' ? '00' : (formData.dueDate.split('T')[1]?.split(':')[1] || '00');
+                      setFormData({ ...formData, dueDate: `${date}T${hour}:${minutes}` });
+                    }}
+                  >
+                    {Array.from({ length: 11 }, (_, i) => String(i + 8).padStart(2, '0')).map(h => (
+                      <option key={h} value={h}>{h}h</option>
+                    ))}
+                  </select>
 
+                  <select
+                    className="flex-1 px-2 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-sm font-medium disabled:opacity-50"
+                    value={formData.dueDate.split('T')[1]?.split(':')[1] || '00'}
+                    disabled={(formData.dueDate.split('T')[1]?.split(':')[0] || '08') === '18'}
+                    onChange={e => {
+                      const minutes = e.target.value;
+                      const [date, fullTime] = formData.dueDate.split('T');
+                      const hour = fullTime?.split(':')[0] || '08';
+                      setFormData({ ...formData, dueDate: `${date}T${hour}:${minutes}` });
+                    }}
+                  >
+                    <option value="00">00 min</option>
+                    <option value="15">15 min</option>
+                    <option value="30">30 min</option>
+                    <option value="45">45 min</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-slate-400 italic mt-1">
+              * Apenas horários comerciais (08:00 - 18:00) em intervalos de 15 minutos.
+            </p>
+          </div>
 
           {!taskToEdit && (
             <div className="flex items-center gap-2 pt-2 bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800/50">

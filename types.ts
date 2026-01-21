@@ -52,6 +52,7 @@ export interface Task {
   attachmentUrl?: string; // URL for attached document (e.g. PDF)
   isReplicated?: boolean;
   notes?: string;
+  dueNotificationSent?: boolean; // Track if due date notification email was sent
 }
 
 export type TaskInput = Omit<Task, 'id' | 'createdAt' | 'startedAt' | 'completedAt' | 'companyId'>;

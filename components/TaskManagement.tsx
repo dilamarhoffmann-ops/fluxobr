@@ -323,7 +323,12 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
                                   <Paperclip className="w-4 h-4" />
                                 </a>
                               )}
-                              <Avatar name={assignee?.name} src={assignee?.avatar} size="sm" title={assignee?.name} />
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 max-w-[80px] truncate">
+                                  {assignee?.name || 'Sem resp.'}
+                                </span>
+                                <Avatar name={assignee?.name} src={assignee?.avatar} size="sm" title={assignee?.name} />
+                              </div>
                             </div>
                           </div>
                         </div>

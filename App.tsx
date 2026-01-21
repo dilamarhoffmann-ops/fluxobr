@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { INITIAL_TASKS, COLLABORATORS, COMPANIES, INITIAL_TEAMS, INITIAL_FAQS } from './constants';
 import { Task, TaskInput, TaskStatus, Company, Collaborator, FAQItem } from './types';
-import { LayoutDashboard, CheckSquare, Settings as SettingsIcon, Bell, Menu, Building2, HelpCircle, LogOut, Calendar } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Settings as SettingsIcon, Bell, Menu, Building2, HelpCircle, LogOut, Calendar, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { MetricsRow } from './components/MetricsCards';
 import { DashboardCharts } from './components/DashboardCharts';
 import { TaskManagement } from './components/TaskManagement';
@@ -50,6 +50,7 @@ const App: React.FC = () => {
   const [currentUserProfile, setCurrentUserProfile] = useState<Collaborator | null>(null);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMenuCollapsed, setIsMenuCollapsed] = useState(false);
 
   // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -212,6 +213,23 @@ const App: React.FC = () => {
     };
 
     loadData();
+  }, [authUser]);
+
+  // Cleanup state on logout
+  useEffect(() => {
+    if (!authUser) {
+      // Reset all state when user logs out
+      setCurrentUserProfile(null);
+      setTasks([]);
+      setCompanies([]);
+      setCollaborators([]);
+      setTeams([]);
+      setFaqs([]);
+      setTaskTemplates([]);
+      setAuthorizedEmails([]);
+      setNotifications([]);
+      setDataLoading(false);
+    }
   }, [authUser]);
 
   // Reminder Checker Logic
@@ -960,20 +978,34 @@ const App: React.FC = () => {
   if (authLoading) return <div className="h-screen w-screen flex items-center justify-center bg-slate-900"><div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full"></div></div>;
   if (!authUser) return <SupabaseLogin />;
 
-  const currentUser = currentUserProfile || { id: authUser.id, name: authUser.email || 'Usuário', role: 'Membro', avatar: '', isManager: false, accessLevel: 'colaborador' };
+  const currentUser = currentUserProfile || {
+    id: authUser?.id || '',
+    name: authUser?.email || 'Usuário',
+    role: 'Membro',
+    avatar: '',
+    isManager: false,
+    accessLevel: 'colaborador'
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex font-sans transition-colors">
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 lg:static ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} transition-transform duration-200`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 ${isMenuCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 lg:static ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} transition-all duration-300 ease-in-out`}>
         <div className="h-full flex flex-col">
-          <div className="p-8 pb-4 flex flex-col items-center justify-center gap-2">
-            <img src="/logo.png" alt="FluxoBR Logo" className="w-32 h-32 object-contain" />
+          <div className={`p-8 pb-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 ${isMenuCollapsed ? 'p-4 pt-8' : ''}`}>
+            {isMenuCollapsed ? (
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <span className="text-white font-black text-xl">F</span>
+              </div>
+            ) : (
+              <img src="/logo.png" alt="FluxoBR Logo" className="w-32 h-32 object-contain" />
+            )}
           </div>
           <nav className="flex-1 px-2 py-6">
             <MenuVertical
               activeHref={activeTab}
               onItemClick={(href) => { setActiveTab(href as Tab); setIsMobileMenuOpen(false); }}
               color="#3b82f6"
+              isCollapsed={isMenuCollapsed}
               menuItems={[
                 { label: 'Dashboard', href: Tab.DASHBOARD, icon: <LayoutDashboard className="w-5 h-5" /> },
                 { label: 'Tarefas', href: Tab.TASKS, icon: <CheckSquare className="w-5 h-5" /> },
@@ -985,15 +1017,25 @@ const App: React.FC = () => {
               ]}
             />
           </nav>
-          <div className="p-6">
-            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-600">
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`w-2.5 h-2.5 rounded-full ${currentUser.accessLevel === 'admin' ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-400'}`}></div>
-                <span className={`text-xs uppercase tracking-wider font-bold ${currentUser.accessLevel === 'admin' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                  {currentUser.accessLevel === 'admin' ? 'Administrador' : currentUser.accessLevel === 'gestor' ? 'Gestor' : 'Colaborador'}
-                </span>
-              </div>
-              <button onClick={signOut} className="flex items-center gap-2 text-sm text-slate-400 hover:text-red-500 transition-colors"><LogOut className="w-4 h-4" /> Sair</button>
+
+          <div className={`p-4 mt-auto border-t border-slate-100 dark:border-slate-700/50 flex flex-col gap-2`}>
+            <div className={`bg-slate-50 dark:bg-slate-700/50 rounded-xl ${isMenuCollapsed ? 'p-2' : 'p-4'} border border-slate-100 dark:border-slate-600 transition-all`}>
+              {!isMenuCollapsed && (
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={`w-2.5 h-2.5 rounded-full ${currentUser.accessLevel === 'admin' ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-400'}`}></div>
+                  <span className={`text-[10px] uppercase tracking-wider font-extrabold ${currentUser.accessLevel === 'admin' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                    {currentUser.accessLevel === 'admin' ? 'Administrador' : currentUser.accessLevel === 'gestor' ? 'Gestor' : 'Colaborador'}
+                  </span>
+                </div>
+              )}
+              <button
+                onClick={() => signOut()}
+                className={`flex items-center ${isMenuCollapsed ? 'justify-center w-full' : 'gap-2'} text-sm text-slate-400 hover:text-red-500 transition-colors py-1`}
+                title="Sair do Sistema"
+              >
+                <LogOut className="w-4 h-4" />
+                {!isMenuCollapsed && <span className="font-bold">Sair</span>}
+              </button>
             </div>
           </div>
         </div>
@@ -1003,6 +1045,13 @@ const App: React.FC = () => {
         <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 px-8 py-5 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="lg:hidden text-slate-500 dark:text-slate-400"><Menu className="w-6 h-6" /></button>
+            <button
+              onClick={() => setIsMenuCollapsed(!isMenuCollapsed)}
+              className="hidden lg:flex items-center p-2 text-slate-500 dark:text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
+              title={isMenuCollapsed ? "Expandir Menu" : "Recolher Menu"}
+            >
+              {isMenuCollapsed ? <PanelLeftOpen className="w-6 h-6" /> : <PanelLeftClose className="w-6 h-6" />}
+            </button>
             <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 hidden lg:block font-heading">
               {activeTab === Tab.DASHBOARD ? 'Visão Geral' : activeTab === Tab.TASKS ? 'Gerenciamento' : activeTab === Tab.COMPANIES ? 'Portfólio' : 'Configurações'}
             </h2>
@@ -1165,6 +1214,7 @@ const App: React.FC = () => {
         collaborators={collaborators}
         companies={companies}
         currentUserId={authUser?.id}
+        isManager={currentUserProfile?.accessLevel === 'admin' || currentUserProfile?.accessLevel === 'gestor'}
       />
 
       <ReminderNotificationModal

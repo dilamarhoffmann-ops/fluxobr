@@ -41,22 +41,10 @@ export const Avatar: React.FC<AvatarProps> = ({ name = '', src, size = 'md', cla
     return (
         <div
             className={`rounded-full flex items-center justify-center font-bold text-white flex-shrink-0 shadow-sm ring-2 ring-white dark:ring-slate-800 ${sizeClasses[size]} ${className}`}
-            style={{ backgroundColor: !src ? backgroundColor : undefined }}
+            style={{ backgroundColor }}
             title={title || name}
         >
-            {src ? (
-                <img
-                    src={src}
-                    alt={name}
-                    className="w-full h-full rounded-full object-cover"
-                    onError={(e) => {
-                        // Falls back to initials if image fails
-                        (e.target as HTMLImageElement).style.display = 'none';
-                    }}
-                />
-            ) : (
-                <span>{initials}</span>
-            )}
+            <span>{initials}</span>
         </div>
     );
 };

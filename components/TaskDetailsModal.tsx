@@ -12,6 +12,7 @@ interface TaskDetailsModalProps {
     collaborators: Collaborator[];
     companies: Company[];
     currentUserId?: string;
+    isManager?: boolean;
 }
 
 export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
@@ -22,7 +23,8 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     onUpdateNotes,
     collaborators,
     companies,
-    currentUserId
+    currentUserId,
+    isManager = false
 }) => {
     const [notes, setNotes] = React.useState('');
     const [isSaving, setIsSaving] = React.useState(false);
@@ -42,6 +44,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     const company = companies.find(c => c.id === task.companyId);
     const assignee = collaborators.find(c => c.id === task.assigneeId);
     const isAssignee = currentUserId === task.assigneeId;
+    const canEditNotes = isAssignee || isManager;
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return 'Não definida';
@@ -165,7 +168,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                     Observação do Responsável
                                 </h4>
                             </div>
-                            {isAssignee && notes !== (task.notes || '') && (
+                            {canEditNotes && notes !== (task.notes || '') && (
                                 <button
                                     onClick={handleSaveNotes}
                                     disabled={isSaving}
@@ -176,12 +179,12 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                 </button>
                             )}
                         </div>
-                        {isAssignee ? (
+                        {canEditNotes ? (
                             <textarea
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 placeholder="Adicione observações sobre o andamento desta tarefa..."
-                                className="w-full h-24 p-4 bg-amber-50/30 dark:bg-slate-800/50 border-2 border-amber-100/50 dark:border-slate-700 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-amber-400 dark:focus:border-amber-500 transition-all resize-none"
+                                className="w-full min-h-24 p-4 bg-amber-50/30 dark:bg-slate-800/50 border-2 border-amber-100/50 dark:border-slate-700 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-amber-400 dark:focus:border-amber-500 transition-all resize-y"
                             />
                         ) : (
                             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-700 rounded-2xl">
