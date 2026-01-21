@@ -17,69 +17,45 @@ O **AgilePulse Dashboard** é uma plataforma de gestão de tarefas e colaboraç�
 
 ## 4. Funcionalidades Principais
 
-### 4.1. Gestão de Tarefas (Kanban & Lista)
+### 4.1. Gestão de Tarefas (Kanban & Agenda)
 *   **Criação e Edição:** Tarefas com título, descrição, prioridade, data de entrega, responsável, empresa vinculada e checklists.
-*   **Checklists:** Sub-tarefas dentro de um card principal. O status da tarefa muda automaticamente conforme o progresso do checklist (e.g., pendente -> em progresso -> revisão).
-*   **Status Workflow:** Pendente, Em Andamento, Em Revisão, Concluído (somente gestores/admin), Arquivado (somente gestores/admin).
-*   **Lembretes:** Configuração de lembretes com notificações no navegador.
-*   **Anexos:** Suporte a links e uploads de arquivos.
-*   **Recorrência:** Configuração de frequência de repetição para tarefas rotineiras.
+*   **Checklists Mandatórios:** O status da tarefa evolui automaticamente:
+    *   **Pendente:** Estado inicial.
+    *   **Em Andamento:** Ativado ao marcar o primeiro item do checklist.
+    *   **Em Revisão:** Ativado automaticamente ao concluir 100% do checklist.
+*   **Agendamento Comercial Restrito:** Regras rígidas de prazo (08:00 às 18:00 em intervalos de 15 min).
+*   **Observações do Responsável:** Campo de texto editável pelo Responsável, Criador e Gestores/Admins.
+*   **Status Workflow:** Pendente, Em Andamento, Em Revisão, Concluído (gestor/admin), Arquivado (gestor/admin).
+*   **Interface:** Exibição do nome do responsável diretamente nos cards para fácil identificação.
 
 ### 4.2. Gestão de Equipes e Empresas
-*   **Empresas:** Cadastro de empresas clientes com vinculação a squads/times específicos.
-*   **Times (Squads):** Organização de colaboradores em times.
-*   **Restrições de Visualização:** Administradores e Gestores possuem acesso total às suas respectivas áreas (global vs. squad) por padrão, sem necessidade de ativação manual. Colaboradores veem apenas dados pertinentes ao seu próprio trabalho e equipe básica.
+*   **Portfólio por Squad:** Empresas vinculadas a times específicos.
+*   **Controle de Acesso (RBAC):**
+    *   **Admin:** Visão global.
+    *   **Gestor:** Focado no seu Squad e empresas vinculadas.
+    *   **Colaborador:** Focado em suas tarefas e tarefas replicadas da equipe.
 
-### 4.3. Base de Conhecimento (FAQ)
-*   **FAQ Interativo:** Perguntas e respostas categorizadas.
-*   **Anexos:** Upload de manuais e documentos PDF vinculados aos itens do FAQ.
-*   **Links Externos:** Referências para documentação externa.
+### 4.3. Sistema de Notificações Inteligente
+*   **E-mails via Resend:** Disparos automáticos para tarefas vencidas.
+*   **Escalonamento:** Re-notificação configurada para 3, 7, 14 e 30 dias de atraso.
+*   **Auditoria:** Registro detalhado de disparos na tabela `notification_logs`.
 
-### 4.4. Templates de Tarefas
-*   **Padronização:** Criação de modelos de tarefas com atividades pré-definidas para processos recorrentes.
-*   **Instanciação Rápida:** Geração de tarefas reais a partir de templates com um clique.
-
-### 4.5. Painel de Controle (Dashboard)
-*   **Métricas:** Resumo de tarefas totais, concluídas, bloqueadas e atrasadas.
-*   **Gráficos:** Visualização de desempenho e distribuição de tarefas (via Recharts).
-*   **Agenda:** Visualização de prazos em formato de calendário.
-
-### 4.6. Administração e Segurança
-*   **Autenticação:** Login seguro via Supabase Auth.
-*   **Gestão de Usuários:** Cadastro de membros, definição de papéis (Admin, Gestor, Colaborador) e níveis de acesso.
-*   **Emails Autorizados:** Controle de quem pode se registrar na plataforma (whitelist de emails).
-*   **Tema:** Suporte a modo claro e escuro (Dark Mode).
+### 4.4. Administração e Segurança
+*   **Reset de Senha:** Redefinição administrativa para "123mudar" com troca obrigatória.
+*   **Whitelist:** Controle de registro por e-mail autorizado.
 
 ## 5. Arquitetura Técnica
+*   **Frontend:** React 19, Vite, TypeScript, Tailwind CSS.
+*   **Backend:** Supabase (Auth, DB, Storage, Edge Functions).
+*   **Integrações:** Resend (E-mail), Gemini AI (Inteligência de base de dados).
 
-### 5.1. Tech Stack
-*   **Frontend:** React 19, Vite, TypeScript.
-*   **Estilização:** Tailwind CSS (Responsivo e Dark Mode), Lucide React (Ícones).
-*   **Estado e Efeitos:** React Hooks, Context API.
-*   **Componentes:** Framer Motion (Animações), Recharts (Gráficos).
-*   **Backend & Database:** Supabase (PostgreSQL, Auth, Storage, Edge Functions).
-*   **IA (Experimental):** Integração com Google Gemini (@google/genai) para insights inteligentes.
+## 6. Fluxos Relevantes
+1.  **Validação de Prazo:** Sistema bloqueia agendamentos fora do horário comercial.
+2.  **Automação de Status:** Checklist conduz o ciclo de vida da tarefa.
+3.  **Gestão de Feedback:** Campo de observações centraliza a comunicação sobre a tarefa.
 
-### 5.2. Banco de Dados (Schema Simplificado)
-*   `profiles`: Dados dos usuários e suas roles.
-*   `tasks`: Tabela principal de tarefas.
-*   `companies`: Empresas clientes.
-*   `teams`: Times/Squads.
-*   `faqs`: Itens da base de conhecimento.
-*   `authorized_emails`: Whitelist para controle de acesso.
-*   `task_templates` & `template_tasks` & `template_activities`: Estrutura para modelos.
+## 7. Roadmap Futuro
+*   **Relatórios em PDF:** Dashboards de exportação.
+*   **Notificações Webhook:** Integração com apps de chat.
+*   **Dashboard Executivo:** Comparativo de produtividade entre times.
 
-### 5.3. Segurança (Row Level Security - RLS)
-*   Políticas rigorosas no banco de dados para garantir que usuários acessem apenas dados permitidos pelo seu nível de acesso e time.
-
-## 6. Fluxos de Aprovação
-1.  **Execução:** Colaborador marca itens do checklist ou move manualmente para 'Em Revisão'.
-2.  **Automação:** Tarefa move para "Em Andamento" ao iniciar checklist.
-3.  **Conclusão:** Ao completar todos os itens, tarefa move automaticamente para "Em Revisão".
-4.  **Validação:** Apenas o Gestor pode validar a revisão e mover a tarefa para "Concluído".
-
-## 7. Roadmap Futuro (Sugestões)
-*   **Notificações em Tempo Real:** WebSockets para atualizações instantâneas sem refresh.
-*   **Gamificação:** Pontuação por tarefas concluídas.
-*   **Integração com Slack/Discord:** Bots para notificar equipes.
-*   **Relatórios Avançados:** Exportação de métricas em PDF/Excel.

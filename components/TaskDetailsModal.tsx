@@ -43,8 +43,9 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
     const company = companies.find(c => c.id === task.companyId);
     const assignee = collaborators.find(c => c.id === task.assigneeId);
-    const isAssignee = currentUserId === task.assigneeId;
-    const canEditNotes = isAssignee || isManager;
+    const isAssignee = currentUserId && task.assigneeId && currentUserId.toLowerCase() === task.assigneeId.toLowerCase();
+    const isCreator = currentUserId && task.creatorId && currentUserId.toLowerCase() === task.creatorId.toLowerCase();
+    const canEditNotes = isAssignee || isCreator || isManager;
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return 'Não definida';

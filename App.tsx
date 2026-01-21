@@ -1016,27 +1016,35 @@ const App: React.FC = () => {
                 ...(currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor' ? [{ label: 'Configurações', href: Tab.SETTINGS, icon: <SettingsIcon className="w-5 h-5" /> }] : []),
               ]}
             />
+
+            <div className="mt-4 px-4">
+              <button
+                onClick={() => signOut()}
+                className={`flex items-center ${isMenuCollapsed ? 'justify-center w-full' : 'gap-3 px-4'} py-3 text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-all duration-300 group/logout`}
+                title="Sair do Sistema"
+              >
+                <LogOut className={`w-5 h-5 transition-colors group-hover/logout:text-red-500`} />
+                {!isMenuCollapsed && <span className="font-bold text-sm uppercase tracking-wider">Sair</span>}
+              </button>
+            </div>
           </nav>
 
-          <div className={`p-4 mt-auto border-t border-slate-100 dark:border-slate-700/50 flex flex-col gap-2`}>
-            <div className={`bg-slate-50 dark:bg-slate-700/50 rounded-xl ${isMenuCollapsed ? 'p-2' : 'p-4'} border border-slate-100 dark:border-slate-600 transition-all`}>
-              {!isMenuCollapsed && (
-                <div className="flex items-center gap-3 mb-3">
+          <div className={`p-4 mt-auto border-t border-slate-100 dark:border-slate-700/50`}>
+            {!isMenuCollapsed && (
+              <div className={`bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-600 transition-all`}>
+                <div className="flex items-center gap-3">
                   <div className={`w-2.5 h-2.5 rounded-full ${currentUser.accessLevel === 'admin' ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-400'}`}></div>
                   <span className={`text-[10px] uppercase tracking-wider font-extrabold ${currentUser.accessLevel === 'admin' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
                     {currentUser.accessLevel === 'admin' ? 'Administrador' : currentUser.accessLevel === 'gestor' ? 'Gestor' : 'Colaborador'}
                   </span>
                 </div>
-              )}
-              <button
-                onClick={() => signOut()}
-                className={`flex items-center ${isMenuCollapsed ? 'justify-center w-full' : 'gap-2'} text-sm text-slate-400 hover:text-red-500 transition-colors py-1`}
-                title="Sair do Sistema"
-              >
-                <LogOut className="w-4 h-4" />
-                {!isMenuCollapsed && <span className="font-bold">Sair</span>}
-              </button>
-            </div>
+              </div>
+            )}
+            {isMenuCollapsed && (
+              <div className="flex justify-center">
+                <div className={`w-2.5 h-2.5 rounded-full ${currentUser.accessLevel === 'admin' ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-400'}`}></div>
+              </div>
+            )}
           </div>
         </div>
       </aside>
@@ -1213,8 +1221,8 @@ const App: React.FC = () => {
         onUpdateNotes={handleUpdateNotes}
         collaborators={collaborators}
         companies={companies}
-        currentUserId={authUser?.id}
-        isManager={currentUserProfile?.accessLevel === 'admin' || currentUserProfile?.accessLevel === 'gestor'}
+        currentUserId={currentUser.id}
+        isManager={currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor'}
       />
 
       <ReminderNotificationModal
@@ -1239,6 +1247,7 @@ const App: React.FC = () => {
       <HelpModal
         isOpen={isHelpModalOpen}
         onClose={() => setIsHelpModalOpen(false)}
+        isAdmin={currentUser.accessLevel === 'admin'}
       />
     </div>
   );
