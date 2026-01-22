@@ -70,7 +70,8 @@ export interface FAQItem {
   question: string;
   answer: string;
   url?: string; // External link for documentation
-  pdfUrl?: string; // Base64 or Blob URL for attached PDF
+  pdfUrl?: string; // URL for attached PDF/Document
+  imageUrl?: string; // URL for attached Image
   creatorId?: string;
 }
 

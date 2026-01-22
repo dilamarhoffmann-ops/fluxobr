@@ -102,6 +102,16 @@ export const FAQViewModal: React.FC<FAQViewModalProps> = ({ isOpen, onClose, faq
                   )}
                 </>
               )}
+              {faq.imageUrl && (
+                <button
+                  type="button"
+                  onClick={() => setPreviewUrl(faq.imageUrl!)}
+                  className="inline-flex items-center gap-2 bg-amber-50 text-amber-700 px-4 py-2 rounded-lg hover:bg-amber-100 transition-colors font-medium text-sm"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  Visualizar Imagem Anexada
+                </button>
+              )}
             </div>
           </div>
 

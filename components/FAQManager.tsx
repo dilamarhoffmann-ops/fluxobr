@@ -51,10 +51,10 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
       try {
         return JSON.parse(saved);
       } catch (e) {
-        return { question: '', answer: '', url: '', pdfUrl: '' };
+        return { question: '', answer: '', url: '', pdfUrl: '', imageUrl: '' };
       }
     }
-    return { question: '', answer: '', url: '', pdfUrl: '' };
+    return { question: '', answer: '', url: '', pdfUrl: '', imageUrl: '' };
   });
 
   // Persistence logic (Save on Change)
@@ -108,7 +108,7 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
   };
 
   const resetForm = () => {
-    setFormData({ question: '', answer: '', url: '', pdfUrl: '' });
+    setFormData({ question: '', answer: '', url: '', pdfUrl: '', imageUrl: '' });
     setIsAdding(false);
     setEditingId(null);
     setLastSavedTime(null);
@@ -122,7 +122,8 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
       question: faq.question,
       answer: faq.answer,
       url: faq.url || '',
-      pdfUrl: faq.pdfUrl || ''
+      pdfUrl: faq.pdfUrl || '',
+      imageUrl: faq.imageUrl || ''
     });
     setEditingId(faq.id);
     setIsAdding(false);
@@ -143,7 +144,8 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
         currentFaq.question === formData.question &&
         currentFaq.answer === formData.answer &&
         (currentFaq.url || '') === formData.url &&
-        (currentFaq.pdfUrl || '') === formData.pdfUrl) {
+        (currentFaq.pdfUrl || '') === formData.pdfUrl &&
+        (currentFaq.imageUrl || '') === formData.imageUrl) {
         return;
       }
 
@@ -194,6 +196,39 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
     }
   };
 
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert("Por favor, selecione apenas arquivos de imagem.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      alert("A imagem é muito grande. O limite é 5MB.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `faq-img-${Date.now()}-${cleanName}`;
+
+      const { error } = await storage.upload('task-attachments', fileName, file);
+      if (error) throw error;
+
+      const publicUrl = storage.getPublicUrl('task-attachments', fileName);
+      setFormData({ ...formData, imageUrl: publicUrl });
+      loadAttachments();
+    } catch (err) {
+      console.error("Erro no upload da imagem", err);
+      alert("Falha ao enviar a imagem.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     setCopiedLink(text);
@@ -202,6 +237,10 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
 
   const removeFile = () => {
     setFormData({ ...formData, pdfUrl: '' });
+  };
+
+  const removeImage = () => {
+    setFormData({ ...formData, imageUrl: '' });
   };
 
   const sortedFaqs = React.useMemo(() => {
@@ -371,54 +410,90 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
               />
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-200">
-              <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                <Paperclip className="w-4 h-4 text-slate-400" /> Anexar Documento PDF
-              </label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-200">
+                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <Paperclip className="w-4 h-4 text-slate-400" /> Anexar Documento PDF
+                </label>
 
-              {formData.pdfUrl ? (
-                <div className="flex flex-col gap-2 bg-indigo-50/50 p-3 rounded border border-indigo-100">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-indigo-600 truncate">
-                      <FileText className="w-4 h-4 shrink-0" />
-                      {isImageFile(formData.pdfUrl) ? (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreviewUrl(formData.pdfUrl); }}
-                          className="text-xs font-medium hover:underline truncate max-w-[200px] flex items-center gap-1.5"
-                        >
-                          <ImageIcon className="w-3.5 h-3.5" /> Visualizar Imagem
-                        </button>
-                      ) : (
+                {formData.pdfUrl ? (
+                  <div className="flex flex-col gap-2 bg-indigo-50/50 p-3 rounded border border-indigo-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-indigo-600 truncate">
+                        <FileText className="w-4 h-4 shrink-0" />
                         <a href={formData.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium hover:underline truncate max-w-[200px]">
                           Visualizar PDF
                         </a>
-                      )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removeFile}
+                        className="text-red-500 hover:text-red-700 p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={removeFile}
-                      className="text-red-500 hover:text-red-700 p-1"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
                   </div>
-                </div>
-              ) : (
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={handleFileChange}
-                    disabled={isUploading}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                  <div className="flex items-center justify-center gap-2 py-4 border border-dashed border-slate-300 rounded-lg bg-white text-slate-500 hover:text-indigo-600 transition-colors">
-                    {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileUp className="w-5 h-5" />}
-                    <span>{isUploading ? 'Enviando...' : 'Clique para subir PDF (Máx 5MB)'}</span>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleFileChange}
+                      disabled={isUploading}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <div className="flex items-center justify-center gap-2 py-4 border border-dashed border-slate-300 rounded-lg bg-white text-slate-500 hover:text-indigo-600 transition-colors">
+                      {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileUp className="w-5 h-5" />}
+                      <span>{isUploading ? 'Subir PDF' : 'Subir PDF (Máx 5MB)'}</span>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+
+              <div className="bg-slate-50 p-4 rounded-lg border border-dashed border-slate-200">
+                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4 text-slate-400" /> Anexar Imagem
+                </label>
+
+                {formData.imageUrl ? (
+                  <div className="flex flex-col gap-2 bg-indigo-50/50 p-3 rounded border border-indigo-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-indigo-600 truncate">
+                        <ImageIcon className="w-4 h-4 shrink-0" />
+                        <button
+                          type="button"
+                          onClick={() => setPreviewUrl(formData.imageUrl!)}
+                          className="text-xs font-medium hover:underline truncate max-w-[200px]"
+                        >
+                          Visualizar Imagem
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        className="text-red-500 hover:text-red-700 p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      disabled={isUploading}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <div className="flex items-center justify-center gap-2 py-4 border border-dashed border-slate-300 rounded-lg bg-white text-slate-500 hover:text-indigo-600 transition-colors">
+                      {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
+                      <span>{isUploading ? 'Subindo...' : 'Subir Imagem'}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
@@ -479,7 +554,7 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                     <p className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">
                       {faq.answer}
                     </p>
-                    {(faq.url || faq.pdfUrl) && (
+                    {(faq.url || faq.pdfUrl || faq.imageUrl) && (
                       <div className="flex flex-wrap gap-3 pt-2">
                         {faq.url && (
                           <div className="flex items-center gap-2">
@@ -505,24 +580,25 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                         )}
                         {faq.pdfUrl && (
                           <div className="flex items-center gap-2">
-                            {isImageFile(faq.pdfUrl) ? (
-                              <button
-                                type="button"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreviewUrl(faq.pdfUrl!); }}
-                                className="px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-emerald-100 transition-colors border border-emerald-100/50"
-                              >
-                                <ImageIcon className="w-3 h-3" /> Ver Imagem
-                              </button>
-                            ) : (
-                              <a
-                                href={faq.pdfUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-emerald-100 transition-colors border border-emerald-100/50"
-                              >
-                                <FileText className="w-3 h-3" /> PDF
-                              </a>
-                            )}
+                            <a
+                              href={faq.pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-emerald-100 transition-colors border border-emerald-100/50"
+                            >
+                              <FileText className="w-3 h-3" /> PDF
+                            </a>
+                          </div>
+                        )}
+                        {faq.imageUrl && (
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreviewUrl(faq.imageUrl!); }}
+                              className="px-3 py-1.5 bg-amber-50 text-amber-600 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-amber-100 transition-colors border border-amber-100/50"
+                            >
+                              <ImageIcon className="w-3 h-3" /> Ver Imagem
+                            </button>
                           </div>
                         )}
                       </div>
