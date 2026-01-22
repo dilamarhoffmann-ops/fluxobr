@@ -1,6 +1,7 @@
 import React from 'react';
 import { Task, Company, Collaborator } from '../types';
-import { X, Check, CheckCircle2, CheckSquare, Building2, User, Calendar, Clock, MessageSquare, Save } from 'lucide-react';
+import { X, Check, CheckCircle2, CheckSquare, Building2, User, Calendar, Clock, MessageSquare, Save, Paperclip, FileText, Loader2, ExternalLink } from 'lucide-react';
+import { storage } from '../lib/supabase';
 import { Avatar } from './ui/Avatar';
 
 interface TaskDetailsModalProps {
@@ -9,6 +10,7 @@ interface TaskDetailsModalProps {
     onClose: () => void;
     onToggleActivity: (taskId: string, index: number) => void;
     onUpdateNotes: (taskId: string, notes: string) => void;
+    onUpdateTask?: (taskId: string, updates: Partial<Task>) => Promise<void>;
     collaborators: Collaborator[];
     companies: Company[];
     currentUserId?: string;
@@ -21,6 +23,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
     onClose,
     onToggleActivity,
     onUpdateNotes,
+    onUpdateTask,
     collaborators,
     companies,
     currentUserId,
@@ -28,6 +31,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 }) => {
     const [notes, setNotes] = React.useState('');
     const [isSaving, setIsSaving] = React.useState(false);
+    const [isUploading, setIsUploading] = React.useState(false);
 
     React.useEffect(() => {
         if (task) {
@@ -60,6 +64,42 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         setIsSaving(true);
         await onUpdateNotes(task.id, notes);
         setIsSaving(false);
+    };
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !task) return;
+
+        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+            alert("O arquivo é muito grande. O limite é 5MB.");
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const fileName = `task-${task.id}-${Date.now()}-${cleanName}`;
+
+            const { error } = await storage.upload('task-attachments', fileName, file);
+            if (error) throw error;
+
+            const publicUrl = storage.getPublicUrl('task-attachments', fileName);
+
+            if (onUpdateTask) {
+                await onUpdateTask(task.id, { attachmentUrl: publicUrl });
+            } else {
+                // Fallback if prop not provided
+                const { error: dbError } = await storage.from('tasks').update({ attachment_url: publicUrl }).eq('id', task.id);
+                if (dbError) throw dbError;
+                alert("Arquivo anexado com sucesso!");
+                window.location.reload();
+            }
+        } catch (err) {
+            console.error("Erro no upload", err);
+            alert("Falha ao enviar o arquivo.");
+        } finally {
+            setIsUploading(false);
+        }
     };
 
     return (
@@ -160,38 +200,60 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                         </div>
                     )}
 
-                    {/* Notes Section (Observação) */}
+                    {/* Attachments Section */}
                     <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800">
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
-                                <MessageSquare className="w-4 h-4 text-amber-500" />
+                                <Paperclip className="w-4 h-4 text-indigo-500" />
                                 <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">
-                                    Observação do Responsável
+                                    Documentos Anexados
                                 </h4>
                             </div>
-                            {canEditNotes && notes !== (task.notes || '') && (
-                                <button
-                                    onClick={handleSaveNotes}
-                                    disabled={isSaving}
-                                    className="flex items-center gap-1.5 px-3 py-1 bg-amber-500 text-white text-[10px] font-black uppercase rounded-lg hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50"
-                                >
-                                    <Save className="w-3 h-3" />
-                                    {isSaving ? 'Salvando...' : 'Salvar Nota'}
-                                </button>
+
+                            {canEditNotes && (
+                                <div className="relative">
+                                    <input
+                                        type="file"
+                                        onChange={handleFileChange}
+                                        disabled={isUploading}
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                                    />
+                                    <button
+                                        type="button"
+                                        disabled={isUploading}
+                                        className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black uppercase rounded-lg hover:bg-indigo-100 transition-all disabled:opacity-50"
+                                    >
+                                        {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Paperclip className="w-3 h-3" />}
+                                        {isUploading ? 'Enviando...' : 'Anexar Arquivo'}
+                                    </button>
+                                </div>
                             )}
                         </div>
-                        {canEditNotes ? (
-                            <textarea
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                placeholder="Adicione observações sobre o andamento desta tarefa..."
-                                className="w-full min-h-24 p-4 bg-amber-50/30 dark:bg-slate-800/50 border-2 border-amber-100/50 dark:border-slate-700 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-amber-400 dark:focus:border-amber-500 transition-all resize-y"
-                            />
+
+                        {task.attachmentUrl ? (
+                            <div className="flex items-center justify-between p-4 bg-indigo-50/50 dark:bg-slate-800/50 border-2 border-indigo-100/50 dark:border-slate-700 rounded-2xl">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white dark:bg-slate-700 p-2 rounded-xl shadow-sm">
+                                        <FileText className="w-5 h-5 text-indigo-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Arquivo Anexo</p>
+                                        <p className="text-[10px] text-slate-400 font-medium">Documento PDF ou Imagem</p>
+                                    </div>
+                                </div>
+                                <a
+                                    href={task.attachmentUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-xl border border-indigo-100 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all shadow-sm"
+                                >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                    Visualizar
+                                </a>
+                            </div>
                         ) : (
-                            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-700 rounded-2xl">
-                                <p className="text-sm font-medium text-slate-600 dark:text-slate-300 italic whitespace-pre-wrap">
-                                    {task.notes || 'Nenhuma observação registrada pelo responsável.'}
-                                </p>
+                            <div className="text-center py-6 bg-slate-50 dark:bg-slate-800/20 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                                <p className="text-[11px] font-medium text-slate-400">Nenhum arquivo anexado a esta tarefa.</p>
                             </div>
                         )}
                     </div>

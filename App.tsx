@@ -469,11 +469,24 @@ const App: React.FC = () => {
     }
   };
 
-  const handleUpdateNotes = async (taskId: string, notes: string) => {
-    const { error } = await db.update('tasks', taskId, { notes });
+  const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+    // Convert Task field names to snake_case for DB
+    const dbUpdates: any = {};
+    if (updates.title !== undefined) dbUpdates.title = updates.title;
+    if (updates.description !== undefined) dbUpdates.description = updates.description;
+    if (updates.status !== undefined) dbUpdates.status = updates.status;
+    if (updates.priority !== undefined) dbUpdates.priority = updates.priority;
+    if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
+    if (updates.assigneeId !== undefined) dbUpdates.assignee_id = updates.assigneeId;
+    if (updates.companyId !== undefined) dbUpdates.company_id = updates.companyId;
+    if (updates.notes !== undefined) dbUpdates.notes = updates.notes;
+    if (updates.attachmentUrl !== undefined) dbUpdates.attachment_url = updates.attachmentUrl;
+    if (updates.checklist !== undefined) dbUpdates.checklist = updates.checklist;
+
+    const { error } = await db.update('tasks', taskId, dbUpdates);
     if (!error) {
       setTasks(prev => {
-        const updatedTasks = prev.map(t => t.id === taskId ? { ...t, notes } : t);
+        const updatedTasks = prev.map(t => t.id === taskId ? { ...t, ...updates } : t);
         if (viewingTask?.id === taskId) {
           const updatedTask = updatedTasks.find(t => t.id === taskId);
           if (updatedTask) setViewingTask(updatedTask);
@@ -481,6 +494,10 @@ const App: React.FC = () => {
         return updatedTasks;
       });
     }
+  };
+
+  const handleUpdateNotes = async (taskId: string, notes: string) => {
+    await handleUpdateTask(taskId, { notes });
   };
 
   const handleOpenCreateModal = (date?: string, mode: 'nova' | 'modelo' | 'lembrete' = 'nova') => {
@@ -1227,6 +1244,7 @@ const App: React.FC = () => {
         onClose={() => setViewingTask(null)}
         onToggleActivity={handleToggleChecklistItem}
         onUpdateNotes={handleUpdateNotes}
+        onUpdateTask={handleUpdateTask}
         collaborators={collaborators}
         companies={companies}
         currentUserId={currentUser.id}
