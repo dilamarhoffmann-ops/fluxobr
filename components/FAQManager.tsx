@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { HelpCircle, ChevronRight, BookOpen, Plus, Trash2, Edit2, Save, X, ExternalLink, FileText, FileUp, Paperclip, Link, Copy, Check, Loader2 } from 'lucide-react';
+import { HelpCircle, ChevronRight, BookOpen, Plus, Trash2, Edit2, Save, X, ExternalLink, FileText, FileUp, Paperclip, Link, Copy, Check, Loader2, Image as ImageIcon } from 'lucide-react';
 import { FAQItem } from '../types';
 import { storage } from '../lib/supabase';
 
@@ -33,9 +33,15 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
 
   const isImageFile = (url: string | undefined | null) => {
     if (!url) return false;
-    // Remove query params and fragments, then check extension
-    const pureUrl = url.split(/[?#]/)[0].toLowerCase();
-    return /\.(jpg|jpeg|png|webp|gif|svg|avif|bmp)$/.test(pureUrl);
+    const cleanUrl = url.trim().split(/[?#]/)[0].toLowerCase();
+    return cleanUrl.endsWith('.jpg') ||
+      cleanUrl.endsWith('.jpeg') ||
+      cleanUrl.endsWith('.png') ||
+      cleanUrl.endsWith('.webp') ||
+      cleanUrl.endsWith('.gif') ||
+      cleanUrl.endsWith('.svg') ||
+      cleanUrl.endsWith('.avif') ||
+      cleanUrl.endsWith('.bmp');
   };
 
   // Form State
@@ -378,10 +384,10 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                       {isImageFile(formData.pdfUrl) ? (
                         <button
                           type="button"
-                          onClick={() => setPreviewUrl(formData.pdfUrl)}
-                          className="text-xs font-medium hover:underline truncate max-w-[200px]"
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreviewUrl(formData.pdfUrl); }}
+                          className="text-xs font-medium hover:underline truncate max-w-[200px] flex items-center gap-1.5"
                         >
-                          Visualizar Imagem
+                          <ImageIcon className="w-3.5 h-3.5" /> Visualizar Imagem
                         </button>
                       ) : (
                         <a href={formData.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium hover:underline truncate max-w-[200px]">
@@ -479,10 +485,11 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                           <div className="flex items-center gap-2">
                             {isImageFile(faq.url) ? (
                               <button
-                                onClick={() => setPreviewUrl(faq.url!)}
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreviewUrl(faq.url!); }}
                                 className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-indigo-100 transition-colors border border-indigo-100/50"
                               >
-                                <ExternalLink className="w-3 h-3" /> Ver Imagem
+                                <ImageIcon className="w-3 h-3" /> Ver Imagem
                               </button>
                             ) : (
                               <a
@@ -500,10 +507,11 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                           <div className="flex items-center gap-2">
                             {isImageFile(faq.pdfUrl) ? (
                               <button
-                                onClick={() => setPreviewUrl(faq.pdfUrl!)}
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreviewUrl(faq.pdfUrl!); }}
                                 className="px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-emerald-100 transition-colors border border-emerald-100/50"
                               >
-                                <FileText className="w-3 h-3" /> Ver Imagem
+                                <ImageIcon className="w-3 h-3" /> Ver Imagem
                               </button>
                             ) : (
                               <a
@@ -562,11 +570,12 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                           <div className="flex justify-end gap-2">
                             {isImage ? (
                               <button
-                                onClick={() => setPreviewUrl(publicUrl)}
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setPreviewUrl(publicUrl); }}
                                 className="p-2 hover:bg-indigo-50 rounded-lg text-indigo-600 transition-colors"
                                 title="Visualizar Imagem"
                               >
-                                <ExternalLink className="w-4 h-4" />
+                                <ImageIcon className="w-4 h-4" />
                               </button>
                             ) : (
                               <a
