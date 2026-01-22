@@ -27,6 +27,28 @@ export const FAQViewModal: React.FC<FAQViewModalProps> = ({ isOpen, onClose, faq
       cleanUrl.endsWith('.bmp');
   };
 
+  const renderWithImages = (text: string) => {
+    if (!text) return null;
+    const parts = text.split(/(!\[.*?\]\(.*?\))/);
+    return parts.map((part, index) => {
+      const match = part.match(/!\[(.*?)\]\((.*?)\)/);
+      if (match) {
+        const url = match[2];
+        return (
+          <div key={index} className="my-4 flex flex-col items-center">
+            <img
+              src={url}
+              alt="Anexo"
+              className="max-w-full rounded-xl shadow-lg border border-slate-100 cursor-zoom-in hover:scale-[1.01] transition-transform"
+              onClick={(e) => { e.stopPropagation(); setPreviewUrl(url); }}
+            />
+          </div>
+        );
+      }
+      return <span key={index} className="whitespace-pre-wrap">{part}</span>;
+    });
+  };
+
   return (
     <>
       <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in overflow-y-auto">
@@ -49,7 +71,9 @@ export const FAQViewModal: React.FC<FAQViewModalProps> = ({ isOpen, onClose, faq
 
             <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-100 dark:border-slate-700">
               <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Resposta / Orientação</h4>
-              <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{faq.answer}</p>
+              <div className="text-slate-700 dark:text-slate-300 leading-relaxed overflow-hidden">
+                {renderWithImages(faq.answer)}
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-4 pt-2">

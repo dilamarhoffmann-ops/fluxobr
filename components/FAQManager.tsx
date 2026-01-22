@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { HelpCircle, ChevronRight, BookOpen, Plus, Trash2, Edit2, Save, X, ExternalLink, FileText, FileUp, Paperclip, Link, Copy, Check, Loader2, Image as ImageIcon } from 'lucide-react';
 import { FAQItem } from '../types';
 import { storage } from '../lib/supabase';
@@ -30,6 +30,8 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
   const [isExpandingAnswer, setIsExpandingAnswer] = useState(false);
   const [expandedFaqId, setExpandedFaqId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const expandedTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   const isImageFile = (url: string | undefined | null) => {
     if (!url) return false;
@@ -255,6 +257,69 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
     return filtered.sort((a, b) => a.question.localeCompare(b.question));
   }, [faqs, searchTerm]);
 
+  const insertAtCursor = (textarea: HTMLTextAreaElement | null, text: string) => {
+    if (!textarea) return;
+    const scrollPos = textarea.scrollTop;
+    const strPos = textarea.selectionStart || 0;
+    const front = (textarea.value).substring(0, strPos);
+    const back = (textarea.value).substring(textarea.selectionEnd || 0);
+    const newValue = front + text + back;
+    setFormData({ ...formData, answer: newValue });
+    setTimeout(() => {
+      textarea.selectionStart = textarea.selectionEnd = strPos + text.length;
+      textarea.focus();
+      textarea.scrollTop = scrollPos;
+    }, 10);
+  };
+
+  const handleTextareaImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, ref: React.RefObject<HTMLTextAreaElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert("Por favor, selecione apenas arquivos de imagem.");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `faq-inline-${Date.now()}-${cleanName}`;
+      const { error } = await storage.upload('task-attachments', fileName, file);
+      if (error) throw error;
+      const publicUrl = storage.getPublicUrl('task-attachments', fileName);
+      insertAtCursor(ref.current, `\n![imagem](${publicUrl})\n`);
+      loadAttachments();
+    } catch (err) {
+      console.error("Erro no upload inline", err);
+      alert("Falha ao inserir imagem.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const renderWithImages = (text: string) => {
+    if (!text) return null;
+    const parts = text.split(/(!\[.*?\]\(.*?\))/);
+    return parts.map((part, index) => {
+      const match = part.match(/!\[(.*?)\]\((.*?)\)/);
+      if (match) {
+        const url = match[2];
+        return (
+          <div key={index} className="my-4 flex flex-col items-center">
+            <img
+              src={url}
+              alt="Anexo"
+              className="max-w-full rounded-xl shadow-lg border border-slate-100 cursor-zoom-in hover:scale-[1.01] transition-transform"
+              onClick={(e) => { e.stopPropagation(); setPreviewUrl(url); }}
+            />
+          </div>
+        );
+      }
+      return <span key={index} className="whitespace-pre-wrap">{part}</span>;
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.question || !formData.answer) return;
@@ -341,15 +406,32 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
             <div className="relative group/field">
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-sm font-medium text-slate-700">Resposta / Descrição</label>
-                <button
-                  type="button"
-                  onClick={() => setIsExpandingAnswer(true)}
-                  className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded transition-colors"
-                >
-                  <ExternalLink className="w-3 h-3" /> Expandir Tela
-                </button>
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleTextareaImageUpload(e, textareaRef)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    />
+                    <button
+                      type="button"
+                      className="text-[10px] font-bold uppercase tracking-wider text-amber-600 hover:text-amber-700 flex items-center gap-1 bg-amber-50 px-2 py-1 rounded transition-colors"
+                    >
+                      <ImageIcon className="w-3 h-3" /> Inserir Imagem
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsExpandingAnswer(true)}
+                    className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded transition-colors"
+                  >
+                    <ExternalLink className="w-3 h-3" /> Expandir Tela
+                  </button>
+                </div>
               </div>
               <textarea
+                ref={textareaRef}
                 className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[150px] resize-y custom-scrollbar leading-relaxed"
                 placeholder="Descreva o procedimento ou resposta..."
                 value={formData.answer}
@@ -367,16 +449,33 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                       <Edit2 className="w-5 h-5 text-indigo-600" />
                       Editor de Resposta
                     </h3>
-                    <button
-                      onClick={() => setIsExpandingAnswer(false)}
-                      className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-slate-100 dark:border-slate-600 transition-all"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleTextareaImageUpload(e, expandedTextareaRef)}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <button
+                          type="button"
+                          className="px-4 py-2 bg-amber-50 text-amber-600 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-amber-100 transition-colors border border-amber-100/50"
+                        >
+                          <ImageIcon className="w-4 h-4" /> Inserir Imagem
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => setIsExpandingAnswer(false)}
+                        className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 bg-white dark:bg-slate-700 rounded-xl shadow-sm border border-slate-100 dark:border-slate-600 transition-all"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex-1 p-6 flex flex-col">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Pergunta: {formData.question || '...'}</p>
                     <textarea
+                      ref={expandedTextareaRef}
                       autoFocus
                       className="flex-1 w-full p-6 border border-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 rounded-xl focus:ring-0 focus:outline-none resize-none text-lg leading-relaxed custom-scrollbar shadow-inner"
                       placeholder="Escreva aqui a resposta detalhada..."
@@ -551,9 +650,9 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                 <div className="overflow-hidden">
                   <div className="px-14 pb-6 space-y-4">
                     <div className="h-px bg-slate-100 w-full mb-4"></div>
-                    <p className="text-slate-600 text-sm whitespace-pre-wrap leading-relaxed">
-                      {faq.answer}
-                    </p>
+                    <div className="text-slate-600 text-sm leading-relaxed">
+                      {renderWithImages(faq.answer)}
+                    </div>
                     {(faq.url || faq.pdfUrl || faq.imageUrl) && (
                       <div className="flex flex-wrap gap-3 pt-2">
                         {faq.url && (
