@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Task, Collaborator, TaskStatus, TaskPriority, Company, FAQItem } from '../types';
-import { Filter, Search, User, Calendar, PlusCircle, Trash2, Clock, Building2, HelpCircle, Edit2, GripVertical, Check, Paperclip } from 'lucide-react';
+import { Filter, Search, User, Calendar, PlusCircle, Trash2, Clock, Building2, HelpCircle, Edit2, GripVertical, Check, Paperclip, X, Image as ImageIcon } from 'lucide-react';
 import { FAQViewModal } from './FAQViewModal';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { Avatar } from './ui/Avatar';
@@ -39,6 +39,20 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
   const [filterCompany, setFilterCompany] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewingFaq, setViewingFaq] = useState<FAQItem | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  const isImageFile = (url: string | undefined | null) => {
+    if (!url) return false;
+    const cleanUrl = url.trim().split(/[?#]/)[0].toLowerCase();
+    return cleanUrl.endsWith('.jpg') ||
+      cleanUrl.endsWith('.jpeg') ||
+      cleanUrl.endsWith('.png') ||
+      cleanUrl.endsWith('.webp') ||
+      cleanUrl.endsWith('.gif') ||
+      cleanUrl.endsWith('.svg') ||
+      cleanUrl.endsWith('.avif') ||
+      cleanUrl.endsWith('.bmp');
+  };
 
   const filteredTasks = tasks.filter(task => {
     const matchesAssignee = filterAssignee === 'all' || task.assigneeId === filterAssignee;
@@ -312,16 +326,29 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
                                 </button>
                               )}
                               {task.attachmentUrl && (
-                                <a
-                                  href={task.attachmentUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-colors group/att"
-                                  title="Ver anexo PDF"
-                                >
-                                  <Paperclip className="w-4 h-4" />
-                                </a>
+                                <>
+                                  {isImageFile(task.attachmentUrl) ? (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); setPreviewUrl(task.attachmentUrl!); }}
+                                      className="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-colors group/att"
+                                      title="Visualizar imagem"
+                                    >
+                                      <ImageIcon className="w-4 h-4" />
+                                    </button>
+                                  ) : (
+                                    <a
+                                      href={task.attachmentUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="p-1.5 text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-full transition-colors group/att"
+                                      title="Ver anexo PDF"
+                                    >
+                                      <Paperclip className="w-4 h-4" />
+                                    </a>
+                                  )}
+                                </>
                               )}
                               <div className="flex items-center gap-2">
                                 <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 max-w-[80px] truncate">
@@ -352,6 +379,36 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
         onClose={() => setViewingFaq(null)}
         faq={viewingFaq}
       />
+
+      {/* Image Preview Modal */}
+      {previewUrl && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in"
+          onClick={() => setPreviewUrl(null)}
+        >
+          <div
+            className="relative max-w-5xl w-full max-h-[90vh] bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white dark:bg-slate-800">
+              <h3 className="font-bold text-slate-800 dark:text-slate-100">Visualização do Anexo</h3>
+              <button
+                onClick={() => setPreviewUrl(null)}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-2 bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+              <img
+                src={previewUrl}
+                alt="Preview"
+                className="max-w-full max-h-full object-contain shadow-sm rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
