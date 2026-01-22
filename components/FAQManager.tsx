@@ -22,14 +22,11 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
   const [attachments, setAttachments] = useState<any[]>([]);
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
   const [isExpandingAnswer, setIsExpandingAnswer] = useState(false);
-  const [expandedFaqs, setExpandedFaqs] = useState<Record<string, boolean>>({});
+  const [expandedFaqId, setExpandedFaqId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const toggleFaq = (id: string) => {
-    setExpandedFaqs(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+    setExpandedFaqId(prev => prev === id ? null : id);
   };
 
   const loadAttachments = async () => {

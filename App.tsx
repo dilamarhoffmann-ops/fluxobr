@@ -167,7 +167,10 @@ const App: React.FC = () => {
 
         // Load Companies
         const { data: companiesData } = await db.getAll('companies');
-        if (companiesData) setCompanies(companiesData.map(mapCompanyFromDB));
+        if (companiesData) {
+          const mapped = companiesData.map(mapCompanyFromDB);
+          setCompanies(mapped.sort((a, b) => a.name.localeCompare(b.name)));
+        }
 
         // Load Collaborators
         const { data: collabsData } = await db.getAll('profiles');
@@ -268,15 +271,20 @@ const App: React.FC = () => {
   const filteredCompanies = useMemo(() => {
     if (!currentUserProfile) return [];
 
+    let result = [];
     // ADMIN: Vê todas as empresas
-    if (currentUserProfile.accessLevel === 'admin') return companies;
+    if (currentUserProfile.accessLevel === 'admin') {
+      result = [...companies];
+    } else {
+      // GESTOR ou COLABORADOR: Veem apenas empresas onde sua EQUIPE está vinculada
+      result = companies.filter(c => {
+        if (!Array.isArray(c.team)) return false;
+        const userRoleLower = currentUserProfile.role.trim().toLowerCase();
+        return c.team.some(teamName => teamName.trim().toLowerCase() === userRoleLower);
+      });
+    }
 
-    // GESTOR ou COLABORADOR: Veem apenas empresas onde sua EQUIPE está vinculada
-    return companies.filter(c => {
-      if (!Array.isArray(c.team)) return false;
-      const userRoleLower = currentUserProfile.role.trim().toLowerCase();
-      return c.team.some(teamName => teamName.trim().toLowerCase() === userRoleLower);
-    });
+    return result.sort((a, b) => a.name.localeCompare(b.name));
   }, [companies, currentUserProfile]);
 
   const filteredTasks = useMemo(() => {
