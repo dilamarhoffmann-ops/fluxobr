@@ -30,6 +30,7 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
   const [isExpandingAnswer, setIsExpandingAnswer] = useState(false);
   const [expandedFaqId, setExpandedFaqId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [editorTab, setEditorTab] = useState<'write' | 'preview' | 'split'>('write');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const expandedTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -114,6 +115,7 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
     setIsAdding(false);
     setEditingId(null);
     setLastSavedTime(null);
+    setEditorTab('write');
     localStorage.removeItem('faq_editing_id');
     localStorage.removeItem('faq_is_adding');
     localStorage.removeItem('faq_form_data');
@@ -129,6 +131,7 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
     });
     setEditingId(faq.id);
     setIsAdding(false);
+    setEditorTab('write');
   };
 
   // Auto-save logic
@@ -300,11 +303,15 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
 
   const renderWithImages = (text: string) => {
     if (!text) return null;
-    const parts = text.split(/(!\[.*?\]\(.*?\))/);
-    return parts.map((part, index) => {
-      const match = part.match(/!\[(.*?)\]\((.*?)\)/);
-      if (match) {
-        const url = match[2];
+
+    // Divide o texto em linhas para processar cabeçalhos e parágrafos
+    const lines = text.split('\n');
+
+    return lines.map((line, index) => {
+      // 1. Processar Imagem Markdown: ![alt](url)
+      const imgMatch = line.match(/!\[(.*?)\]\((.*?)\)/);
+      if (imgMatch) {
+        const url = imgMatch[2];
         return (
           <div key={index} className="my-4 flex flex-col items-center">
             <img
@@ -316,7 +323,33 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
           </div>
         );
       }
-      return <span key={index} className="whitespace-pre-wrap">{part}</span>;
+
+      // 2. Processar Cabeçalhos (Headers)
+      if (line.startsWith('# ')) {
+        return <h1 key={index} className="text-2xl font-bold text-indigo-900 mt-6 mb-4">{line.replace('# ', '')}</h1>;
+      }
+      if (line.startsWith('## ')) {
+        return <h2 key={index} className="text-xl font-bold text-indigo-800 mt-5 mb-3">{line.replace('## ', '')}</h2>;
+      }
+      if (line.startsWith('### ')) {
+        return <h3 key={index} className="text-lg font-bold text-blue-600 mt-4 mb-2">{line.replace('### ', '')}</h3>;
+      }
+
+      // 3. Processar Bolding (**texto**) e Texto Normal
+      if (line.trim() === '') return <div key={index} className="h-4" />; // Espaçamento para linhas vazias
+
+      const parts = line.split(/(\*\*.*?\*\*)/);
+      return (
+        <p key={index} className="text-black text-sm leading-relaxed mb-2">
+          {parts.map((part, pIdx) => {
+            const boldMatch = part.match(/\*\*(.*?)\*\*/);
+            if (boldMatch) {
+              return <strong key={pIdx} className="font-bold text-black">{boldMatch[1]}</strong>;
+            }
+            return part;
+          })}
+        </p>
+      );
     });
   };
 
@@ -407,6 +440,29 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
               <div className="flex justify-between items-center mb-1">
                 <label className="block text-sm font-medium text-slate-700">Resposta / Descrição</label>
                 <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg mr-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditorTab('write')}
+                      className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${editorTab === 'write' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditorTab('preview')}
+                      className={`px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${editorTab === 'preview' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      Visualizar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditorTab('split')}
+                      className={`hidden md:block px-3 py-1 text-[10px] font-bold uppercase rounded-md transition-all ${editorTab === 'split' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      Split
+                    </button>
+                  </div>
                   <div className="relative">
                     <input
                       type="file"
@@ -426,18 +482,28 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                     onClick={() => setIsExpandingAnswer(true)}
                     className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 px-2 py-1 rounded transition-colors"
                   >
-                    <ExternalLink className="w-3 h-3" /> Expandir Tela
+                    <ExternalLink className="w-3 h-3" /> Tela Cheia
                   </button>
                 </div>
               </div>
-              <textarea
-                ref={textareaRef}
-                className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[150px] resize-y custom-scrollbar leading-relaxed"
-                placeholder="Descreva o procedimento ou resposta..."
-                value={formData.answer}
-                onChange={e => setFormData({ ...formData, answer: e.target.value })}
-                required
-              />
+              <div className={`grid gap-4 ${editorTab === 'split' ? 'md:grid-cols-2' : 'grid-cols-1'}`}>
+                {(editorTab === 'write' || editorTab === 'split') && (
+                  <textarea
+                    ref={textareaRef}
+                    className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none min-h-[200px] resize-y custom-scrollbar leading-relaxed"
+                    placeholder="Descreva o procedimento ou resposta..."
+                    value={formData.answer}
+                    onChange={e => setFormData({ ...formData, answer: e.target.value })}
+                    required
+                  />
+                )}
+
+                {(editorTab === 'preview' || editorTab === 'split') && (
+                  <div className="p-4 bg-white rounded-lg border border-slate-200 text-black text-sm leading-relaxed min-h-[200px] overflow-y-auto custom-scrollbar shadow-sm">
+                    {formData.answer ? renderWithImages(formData.answer) : <p className="text-slate-400 italic">Nada para visualizar...</p>}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Expanded Modal */}
@@ -472,16 +538,29 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                       </button>
                     </div>
                   </div>
-                  <div className="flex-1 p-6 flex flex-col">
+                  <div className="flex-1 p-6 flex flex-col min-h-0">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Pergunta: {formData.question || '...'}</p>
-                    <textarea
-                      ref={expandedTextareaRef}
-                      autoFocus
-                      className="flex-1 w-full p-6 border border-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 rounded-xl focus:ring-0 focus:outline-none resize-none text-lg leading-relaxed custom-scrollbar shadow-inner"
-                      placeholder="Escreva aqui a resposta detalhada..."
-                      value={formData.answer}
-                      onChange={e => setFormData({ ...formData, answer: e.target.value })}
-                    />
+                    <div className="flex-1 flex flex-col md:flex-row gap-6 min-h-0">
+                      <div className="flex-1 flex flex-col">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Editor (Markdown)</span>
+                        <textarea
+                          ref={expandedTextareaRef}
+                          autoFocus
+                          className="flex-1 w-full p-6 border border-slate-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-indigo-500/10 focus:outline-none resize-none text-lg leading-relaxed custom-scrollbar shadow-inner hover:border-slate-200 dark:hover:border-slate-700 transition-colors"
+                          placeholder="Escreva aqui a resposta detalhada..."
+                          value={formData.answer}
+                          onChange={e => setFormData({ ...formData, answer: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex-1 flex flex-col">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Visualização</span>
+                        <div className="flex-1 w-full p-6 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-y-auto custom-scrollbar prose dark:prose-invert max-w-none">
+                          <div className="text-black dark:text-white leading-relaxed">
+                            {renderWithImages(formData.answer)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   <div className="px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex justify-end bg-slate-50 dark:bg-slate-800/50 rounded-b-2xl">
                     <button
@@ -507,6 +586,16 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                 value={formData.url}
                 onChange={e => setFormData({ ...formData, url: e.target.value })}
               />
+              {formData.url && isImageFile(formData.url) && (
+                <div className="mt-3 p-2 bg-slate-50 rounded-lg border border-slate-100 flex justify-center">
+                  <img
+                    src={formData.url}
+                    alt="Preview Link"
+                    className="max-h-40 rounded-lg shadow-sm cursor-zoom-in"
+                    onClick={() => setPreviewUrl(formData.url!)}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -517,11 +606,21 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
 
                 {formData.pdfUrl ? (
                   <div className="flex flex-col gap-2 bg-indigo-50/50 p-3 rounded border border-indigo-100">
+                    {isImageFile(formData.pdfUrl) && (
+                      <div className="mb-2 flex justify-center">
+                        <img
+                          src={formData.pdfUrl}
+                          alt="Preview"
+                          className="max-h-24 rounded border border-indigo-200 cursor-zoom-in shadow-sm"
+                          onClick={() => setPreviewUrl(formData.pdfUrl!)}
+                        />
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 text-indigo-600 truncate">
                         <FileText className="w-4 h-4 shrink-0" />
-                        <a href={formData.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium hover:underline truncate max-w-[200px]">
-                          Visualizar PDF
+                        <a href={formData.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-xs font-medium hover:underline truncate max-w-[150px]">
+                          {isImageFile(formData.pdfUrl) ? 'Visualizar Imagem' : 'Visualizar PDF'}
                         </a>
                       </div>
                       <button
@@ -556,14 +655,22 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                 </label>
 
                 {formData.imageUrl ? (
-                  <div className="flex flex-col gap-2 bg-indigo-50/50 p-3 rounded border border-indigo-100">
+                  <div className="flex flex-col gap-2 bg-amber-50/50 p-3 rounded border border-amber-100">
+                    <div className="mb-2 flex justify-center">
+                      <img
+                        src={formData.imageUrl}
+                        alt="Preview"
+                        className="max-h-24 rounded border border-amber-200 cursor-zoom-in shadow-sm"
+                        onClick={() => setPreviewUrl(formData.imageUrl!)}
+                      />
+                    </div>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-indigo-600 truncate">
+                      <div className="flex items-center gap-2 text-amber-600 truncate">
                         <ImageIcon className="w-4 h-4 shrink-0" />
                         <button
                           type="button"
                           onClick={() => setPreviewUrl(formData.imageUrl!)}
-                          className="text-xs font-medium hover:underline truncate max-w-[200px]"
+                          className="text-xs font-medium hover:underline truncate max-w-[150px]"
                         >
                           Visualizar Imagem
                         </button>
@@ -595,20 +702,29 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 mt-6">
               <button
                 type="button"
-                onClick={resetForm}
-                className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-50 rounded-lg"
+                onClick={() => setFormData({ question: '', answer: '', url: '', pdfUrl: '', imageUrl: '' })}
+                className="px-4 py-2 text-slate-500 font-medium hover:bg-slate-50 rounded-lg text-sm transition-colors"
               >
-                Cancelar
+                Limpar Campos
               </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 shadow-sm"
-              >
-                <Save className="w-4 h-4 inline mr-2" /> Salvar
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="px-6 py-2 bg-slate-100 text-slate-700 font-bold rounded-lg hover:bg-slate-200 transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <X className="w-4 h-4" /> Sair
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-lg shadow-indigo-500/20 transition-all active:scale-95 flex items-center gap-2"
+                >
+                  <Save className="w-4 h-4" /> Salvar
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -632,7 +748,7 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                     <ChevronRight className={`w-5 h-5 ${isExpanded ? 'text-indigo-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
                   </div>
                   <div className="flex flex-col min-w-0">
-                    <h3 className={`text-base font-bold truncate transition-colors ${isExpanded ? 'text-indigo-600' : 'text-slate-700 group-hover:text-slate-900'}`}>
+                    <h3 className={`text-base font-bold truncate transition-colors ${isExpanded ? 'text-indigo-600' : 'text-black group-hover:text-indigo-700'}`}>
                       {faq.question}
                     </h3>
                   </div>
@@ -650,7 +766,7 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
                 <div className="overflow-hidden">
                   <div className="px-14 pb-6 space-y-4">
                     <div className="h-px bg-slate-100 w-full mb-4"></div>
-                    <div className="text-slate-600 text-sm leading-relaxed">
+                    <div className="text-black text-sm leading-relaxed">
                       {renderWithImages(faq.answer)}
                     </div>
                     {(faq.url || faq.pdfUrl || faq.imageUrl) && (

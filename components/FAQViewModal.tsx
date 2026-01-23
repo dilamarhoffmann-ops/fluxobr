@@ -29,11 +29,15 @@ export const FAQViewModal: React.FC<FAQViewModalProps> = ({ isOpen, onClose, faq
 
   const renderWithImages = (text: string) => {
     if (!text) return null;
-    const parts = text.split(/(!\[.*?\]\(.*?\))/);
-    return parts.map((part, index) => {
-      const match = part.match(/!\[(.*?)\]\((.*?)\)/);
-      if (match) {
-        const url = match[2];
+
+    // Divide o texto em linhas para processar cabeçalhos e parágrafos
+    const lines = text.split('\n');
+
+    return lines.map((line, index) => {
+      // 1. Processar Imagem Markdown: ![alt](url)
+      const imgMatch = line.match(/!\[(.*?)\]\((.*?)\)/);
+      if (imgMatch) {
+        const url = imgMatch[2];
         return (
           <div key={index} className="my-4 flex flex-col items-center">
             <img
@@ -45,7 +49,33 @@ export const FAQViewModal: React.FC<FAQViewModalProps> = ({ isOpen, onClose, faq
           </div>
         );
       }
-      return <span key={index} className="whitespace-pre-wrap">{part}</span>;
+
+      // 2. Processar Cabeçalhos (Headers)
+      if (line.startsWith('# ')) {
+        return <h1 key={index} className="text-2xl font-bold text-indigo-900 mt-6 mb-4">{line.replace('# ', '')}</h1>;
+      }
+      if (line.startsWith('## ')) {
+        return <h2 key={index} className="text-xl font-bold text-indigo-800 mt-5 mb-3">{line.replace('## ', '')}</h2>;
+      }
+      if (line.startsWith('### ')) {
+        return <h3 key={index} className="text-lg font-bold text-blue-600 mt-4 mb-2">{line.replace('### ', '')}</h3>;
+      }
+
+      // 3. Processar Bolding (**texto**) e Texto Normal
+      if (line.trim() === '') return <div key={index} className="h-4" />; // Espaçamento para linhas vazias
+
+      const parts = line.split(/(\*\*.*?\*\*)/);
+      return (
+        <p key={index} className="text-black dark:text-white text-sm leading-relaxed mb-2">
+          {parts.map((part, pIdx) => {
+            const boldMatch = part.match(/\*\*(.*?)\*\*/);
+            if (boldMatch) {
+              return <strong key={pIdx} className="font-bold text-black dark:text-white">{boldMatch[1]}</strong>;
+            }
+            return part;
+          })}
+        </p>
+      );
     });
   };
 
@@ -66,12 +96,12 @@ export const FAQViewModal: React.FC<FAQViewModalProps> = ({ isOpen, onClose, faq
           <div className="p-6 space-y-4 overflow-y-auto custom-scrollbar flex-1">
             <div>
               <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">Pergunta</h4>
-              <p className="text-slate-700 dark:text-slate-300 text-lg">{faq.question}</p>
+              <p className="text-black dark:text-white text-lg">{faq.question}</p>
             </div>
 
             <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border border-slate-100 dark:border-slate-700">
               <h4 className="text-xs font-bold text-slate-500 uppercase mb-2">Resposta / Orientação</h4>
-              <div className="text-slate-700 dark:text-slate-300 leading-relaxed overflow-hidden">
+              <div className="text-black dark:text-white leading-relaxed overflow-hidden">
                 {renderWithImages(faq.answer)}
               </div>
             </div>
