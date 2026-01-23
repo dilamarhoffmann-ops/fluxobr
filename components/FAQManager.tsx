@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { HelpCircle, ChevronRight, BookOpen, Plus, Trash2, Edit2, Save, X, ExternalLink, FileText, FileUp, Paperclip, Link, Copy, Check, Loader2, Image as ImageIcon } from 'lucide-react';
+import { HelpCircle, ChevronRight, BookOpen, Plus, Trash2, Edit2, Save, X, ExternalLink, FileText, FileUp, Paperclip, Link, Copy, Check, Loader2, Image as ImageIcon, Download } from 'lucide-react';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import { FAQItem } from '../types';
 import { storage } from '../lib/supabase';
 
@@ -31,6 +33,7 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
   const [expandedFaqId, setExpandedFaqId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [editorTab, setEditorTab] = useState<'write' | 'preview' | 'split'>('write');
+  const [isExporting, setIsExporting] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const expandedTextareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -353,6 +356,105 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
     });
   };
 
+  const handleExportPDF = async () => {
+    if (faqs.length === 0) return;
+    setIsExporting(true);
+
+    // Criar um elemento temporário para renderizar o conteúdo da FAQ
+    const exportContainer = document.createElement('div');
+    exportContainer.style.position = 'absolute';
+    exportContainer.style.left = '-9999px';
+    exportContainer.style.width = '800px';
+    exportContainer.style.backgroundColor = 'white';
+    exportContainer.style.padding = '40px';
+
+    // Adicionar Título
+    const title = document.createElement('h1');
+    title.innerText = 'Base de Conhecimento - FAQ';
+    title.style.color = '#1e1b4b'; // indigo-950
+    title.style.fontSize = '24px';
+    title.style.fontWeight = 'bold';
+    title.style.marginBottom = '20px';
+    title.style.borderBottom = '2px solid #e2e8f0';
+    title.style.paddingBottom = '10px';
+    exportContainer.appendChild(title);
+
+    // Adicionar Itens
+    faqs.forEach((faq, index) => {
+      const itemDiv = document.createElement('div');
+      itemDiv.style.marginBottom = '25px';
+      itemDiv.style.padding = '15px';
+      itemDiv.style.backgroundColor = '#f8fafc';
+      itemDiv.style.borderRadius = '8px';
+      itemDiv.style.border = '1px solid #e2e8f0';
+      itemDiv.style.pageBreakInside = 'avoid'; // Crucial para não cortar itens entre páginas
+
+      const question = document.createElement('h3');
+      question.innerText = `${index + 1}. ${faq.question}`;
+      question.style.fontSize = '14px';
+      question.style.fontWeight = 'bold';
+      question.style.color = '#312e81';
+      question.style.marginBottom = '8px';
+      itemDiv.appendChild(question);
+
+      const answer = document.createElement('div');
+      answer.style.fontSize = '12px';
+      answer.style.lineHeight = '1.6';
+      answer.style.color = '#000000';
+      answer.style.whiteSpace = 'pre-wrap';
+
+      const cleanAnswer = faq.answer
+        .replace(/!\[.*?\]\(.*?\)/g, '[Imagem anexada]')
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/#+\s/g, '');
+
+      answer.innerText = cleanAnswer;
+      itemDiv.appendChild(answer);
+
+      exportContainer.appendChild(itemDiv);
+    });
+
+    document.body.appendChild(exportContainer);
+
+    try {
+      const canvas = await html2canvas(exportContainer, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Adicionar primeira página
+      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // Adicionar páginas subsequentes se houver overflow
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`FAQ_AgilePulse_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`);
+    } catch (err) {
+      console.error('Erro ao exportar PDF:', err);
+      alert('Erro ao gerar PDF. Tente novamente.');
+    } finally {
+      document.body.removeChild(exportContainer);
+      setIsExporting(false);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.question || !formData.answer) return;
@@ -373,14 +475,26 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
           <h2 className="text-2xl font-bold text-slate-900">FAQ</h2>
           <p className="text-slate-500">Principais perguntas.</p>
         </div>
-        {!isAdding && !editingId && (
-          <button
-            onClick={() => setIsAdding(true)}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Nova Pergunta
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {isAdmin && (
+            <button
+              onClick={handleExportPDF}
+              disabled={isExporting || faqs.length === 0}
+              className="flex items-center gap-2 bg-white text-slate-700 border border-slate-200 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50"
+            >
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              Exportar PDF
+            </button>
+          )}
+          {!isAdding && !editingId && (
+            <button
+              onClick={() => setIsAdding(true)}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Nova Pergunta
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Search Bar */}
