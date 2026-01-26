@@ -1,7 +1,7 @@
 # Análise: Processo de Envio de Email sobre Status de Tarefas ao Alcançar o Prazo
 
 **Data da Análise:** 21/01/2026  
-**Sistema:** AgilePulse Dashboard  
+**Sistema:** FluxoBR Dashboard  
 **Funcionalidade:** Notificação automática de tarefas vencidas por email
 
 ---

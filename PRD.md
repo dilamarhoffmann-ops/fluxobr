@@ -1,7 +1,7 @@
-# Product Requirements Document (PRD) - AgilePulse Dashboard
+# Product Requirements Document (PRD) - FluxoBR Dashboard
 
 ## 1. Visão Geral do Produto
-O **AgilePulse Dashboard** é uma plataforma de gestão de tarefas e colaboração de equipes focada em agilidade e organização. O sistema permite que gestores e colaboradores acompanhem o fluxo de trabalho, gerenciem prazos, organizem checklists e mantenham uma base de conhecimento centralizada (FAQ). A aplicação é construída com tecnologias modernas de web (React, Vite, Supabase) e oferece uma interface responsiva e segura.
+O **FluxoBR Dashboard** é uma plataforma de gestão de tarefas e colaboração de equipes focada em agilidade e organização. O sistema permite que gestores e colaboradores acompanhem o fluxo de trabalho, gerenciem prazos, organizem checklists e mantenham uma base de conhecimento centralizada (FAQ). A aplicação é construída com tecnologias modernas de web (React, Vite, Supabase) e oferece uma interface responsiva e segura.
 
 ## 2. Objetivos do Produto
 *   Centralizar a gestão de tarefas operacionais e estratégicas.

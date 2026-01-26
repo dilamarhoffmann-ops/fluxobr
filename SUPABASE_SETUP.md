@@ -1,12 +1,12 @@
-# 🚀 Configuração do Supabase - AgilePulse Dashboard
+# 🚀 Configuração do Supabase - FluxoBR Dashboard
 
-Este guia irá ajudá-lo a configurar o Supabase para o projeto AgilePulse Dashboard.
+Este guia irá ajudá-lo a configurar o Supabase para o projeto FluxoBR Dashboard.
 
 ## 📋 Pré-requisitos
 
 - Conta no [Supabase](https://supabase.com)
 - Node.js instalado
-- Projeto AgilePulse Dashboard clonado
+- Projeto FluxoBR Dashboard clonado
 
 ## 🔧 Passo a Passo
 
@@ -15,7 +15,7 @@ Este guia irá ajudá-lo a configurar o Supabase para o projeto AgilePulse Dashb
 1. Acesse [app.supabase.com](https://app.supabase.com)
 2. Clique em **"New Project"**
 3. Preencha os dados:
-   - **Name**: AgilePulse Dashboard
+   - **Name**: FluxoBR Dashboard
    - **Database Password**: Crie uma senha forte (guarde-a!)
    - **Region**: Escolha a região mais próxima
 4. Clique em **"Create new project"**

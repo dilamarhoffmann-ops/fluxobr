@@ -445,7 +445,7 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
         heightLeft -= pageHeight;
       }
 
-      pdf.save(`FAQ_AgilePulse_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`);
+      pdf.save(`FAQ_FluxoBR_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`);
     } catch (err) {
       console.error('Erro ao exportar PDF:', err);
       alert('Erro ao gerar PDF. Tente novamente.');

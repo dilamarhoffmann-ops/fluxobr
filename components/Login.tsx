@@ -107,7 +107,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </div>
 
         <div className="absolute bottom-10 left-0 w-full text-center z-20">
-          <p className="text-slate-400 font-medium text-sm tracking-wide">AgilePulse &copy; 2024</p>
+          <p className="text-slate-400 font-medium text-sm tracking-wide">FluxoBR &copy; 2024</p>
         </div>
       </div>
 

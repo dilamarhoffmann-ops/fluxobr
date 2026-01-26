@@ -1,8 +1,9 @@
 
 import React, { useState, useMemo } from 'react';
 import { Task, Collaborator, TaskStatus, TaskPriority, Company, FAQItem } from '../types';
-import { Filter, Search, User, Calendar, PlusCircle, Trash2, Clock, Building2, HelpCircle, Edit2, GripVertical, Check, Paperclip, X, Image as ImageIcon } from 'lucide-react';
+import { Filter, Search, User, Calendar, PlusCircle, Trash2, Clock, Building2, HelpCircle, Edit2, GripVertical, Check, Paperclip, X, Image as ImageIcon, FileText } from 'lucide-react';
 import { FAQViewModal } from './FAQViewModal';
+import { ReportModal } from './ReportModal';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { Avatar } from './ui/Avatar';
 
@@ -40,6 +41,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [viewingFaq, setViewingFaq] = useState<FAQItem | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const isImageFile = (url: string | undefined | null) => {
     if (!url) return false;
@@ -174,12 +176,20 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
           </div>
 
           {isManager && (
-            <button
-              onClick={onOpenCreateModal}
-              className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
-            >
-              <PlusCircle className="w-5 h-5" /> Nova Tarefa
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsReportModalOpen(true)}
+                className="flex items-center gap-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-100 border border-slate-200 dark:border-slate-600 px-4 py-2.5 rounded-lg text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-600 transition-all shadow-sm active:scale-95"
+              >
+                <FileText className="w-4 h-4" /> Relatório
+              </button>
+              <button
+                onClick={onOpenCreateModal}
+                className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+              >
+                <PlusCircle className="w-5 h-5" /> Nova Tarefa
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -378,6 +388,14 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
         isOpen={!!viewingFaq}
         onClose={() => setViewingFaq(null)}
         faq={viewingFaq}
+      />
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        tasks={tasks}
+        collaborators={collaborators}
+        companies={companies}
       />
 
       {/* Image Preview Modal */}
