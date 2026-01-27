@@ -108,6 +108,19 @@ export const db = {
         const { data, error } = await supabase.from(table).select('*');
         return { data, error };
     },
+
+    // Log Activity
+    logActivity: async (log: {
+        user_id: string,
+        user_name: string,
+        action: string,
+        entity_type: string,
+        entity_id?: string,
+        entity_name?: string,
+        details?: any
+    }) => {
+        return supabase.from('activity_logs').insert(log);
+    }
 };
 
 // Storage helper functions

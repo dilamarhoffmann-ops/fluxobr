@@ -18,6 +18,7 @@ interface TaskManagementProps {
   onViewTask?: (task: Task) => void;
   onToggleChecklistItem?: (taskId: string, index: number) => void;
   isManager: boolean;
+  isAdmin?: boolean;
   onOpenCreateModal: () => void;
   hideCompanyFilter?: boolean;
 }
@@ -33,6 +34,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
   onViewTask,
   onToggleChecklistItem,
   isManager,
+  isAdmin = false,
   onOpenCreateModal,
   hideCompanyFilter = false
 }) => {
@@ -255,8 +257,13 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
                           <div className={`absolute top-0 left-0 w-2 h-full ${column.borderColor}`}></div>
 
                           <div className="flex justify-between items-start mb-2 pl-2">
-                            <div className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-tighter ${priorityInfo.color}`}>
-                              {task.priority}
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                #{task.id.substring(0, 4).toUpperCase()}
+                              </span>
+                              <div className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-tighter ${priorityInfo.color}`}>
+                                {task.priority}
+                              </div>
                             </div>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               {isManager && onEditTask && (
@@ -264,7 +271,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
                                   <Edit2 className="w-3.5 h-3.5" />
                                 </button>
                               )}
-                              {isManager && (
+                              {isAdmin && (
                                 <button onClick={(e) => { e.stopPropagation(); onDeleteTask(task.id); }} className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors bg-slate-50 dark:bg-slate-600">
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -272,11 +279,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
                             </div>
                           </div>
 
-                          <h5 className="font-bold text-slate-800 dark:text-slate-100 leading-tight mb-2 pl-2 pr-4">{task.title}</h5>
-
-                          <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-6 mb-3 pl-2 pr-2 leading-relaxed whitespace-pre-wrap">
-                            {task.description}
-                          </p>
+                          <h5 className="font-bold text-slate-800 dark:text-slate-100 leading-tight mb-3 pl-2 pr-4">{task.title}</h5>
 
                           {/* Checklist Section */}
                           {task.checklist && task.checklist.length > 0 && (

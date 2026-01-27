@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Shield, ShieldAlert, Check, Users, Trash2, Plus, Briefcase, Layers, Lock, X, Edit2, Save, CheckSquare, FileUp, Download } from 'lucide-react';
-import { Collaborator } from '../types';
-import { ADMIN_PASSWORD } from '../constants';
-import Papa from 'papaparse';
+import {
+  Shield, Users, Trash2, Plus, Layers, Lock, X,
+  Edit2, CheckSquare, User, Database, ChevronRight, ShieldAlert
+} from 'lucide-react';
+import { Collaborator, ActivityLog } from '../types';
 import { Avatar } from './ui/Avatar';
+import { SettingsTab } from './SettingsTab';
 
 interface SettingsProps {
   isManager: boolean;
@@ -30,752 +32,464 @@ interface SettingsProps {
   onImportData: (data: any[]) => void;
   onUpdatePassword: (password: string) => Promise<void>;
   onAdminResetPassword: (userId: string) => Promise<void>;
+  activityLogs: ActivityLog[];
 }
 
-export const Settings: React.FC<SettingsProps> = ({
-  isManager,
-  collaborators,
-  onAddCollaborator,
-  onDeleteCollaborator,
-  onEditCollaborator,
-  teams,
-  onAddTeam,
-  onDeleteTeam,
-  authorizedEmails,
-  onAddAuthorizedEmail,
-  onDeleteAuthorizedEmail,
-  currentUser,
-  taskTemplates,
-  onAddTaskTemplate,
-  onDeleteTaskTemplate,
-  onAddTemplateTask,
-  onDeleteTemplateTask,
-  onAddTemplateActivity,
-  onUpdateTaskTemplate,
-  onUpdateTemplateTask,
-  onDeleteTemplateActivity,
-  onImportData,
-  onUpdatePassword,
-  onAdminResetPassword
-}) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
+type TabType = 'perfil' | 'membros' | 'equipes' | 'templates' | 'auditoria';
+
+export const Settings: React.FC<SettingsProps> = (props) => {
+  const {
+    collaborators, teams, authorizedEmails, currentUser, taskTemplates,
+    onAddCollaborator, onDeleteCollaborator, onEditCollaborator,
+    onAddTeam, onDeleteTeam,
+    onAddTaskTemplate, onDeleteTaskTemplate, onAddTemplateTask, onDeleteTemplateTask,
+    onAddTemplateActivity, onUpdateTaskTemplate, onUpdateTemplateTask, onDeleteTemplateActivity,
+    onUpdatePassword, onAdminResetPassword, activityLogs, onDeleteAuthorizedEmail
+  } = props;
+
+  const [activeTab, setActiveTab] = useState<TabType>('perfil');
+
+  // States do formulário de colaborador
   const [newCollabName, setNewCollabName] = useState('');
-  const [newCollabRole, setNewCollabRole] = useState(''); // Team
+  const [newCollabRole, setNewCollabRole] = useState('');
   const [newCollabEmail, setNewCollabEmail] = useState('');
   const [newCollabAccessLevel, setNewCollabAccessLevel] = useState('colaborador');
   const [editingCollabId, setEditingCollabId] = useState<string | null>(null);
   const [newCollabPassword, setNewCollabPassword] = useState('');
 
-  // Template States
+  // States de Templates
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateDesc, setNewTemplateDesc] = useState('');
   const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null);
   const [activeTaskForm, setActiveTaskForm] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newActivityTitle, setNewActivityTitle] = useState('');
-
   const [newTeamName, setNewTeamName] = useState('');
-
-  // Editing States
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
-  const [editTemplateName, setEditTemplateName] = useState('');
-  const [editTemplateDesc, setEditTemplateDesc] = useState('');
 
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [editTaskTitle, setEditTaskTitle] = useState('');
-
-
-
-
-
-
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.type === 'application/json') {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const json = JSON.parse(event.target?.result as string);
-          onImportData(Array.isArray(json) ? json : [json]);
-        } catch (err) {
-          alert('Erro ao processar arquivo JSON.');
-        }
-      };
-      reader.readAsText(file);
-    } else {
-      // Assume CSV
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          onImportData(results.data);
-          if (fileInputRef.current) fileInputRef.current.value = '';
-        },
-        error: (err) => {
-          alert('Erro ao processar arquivo CSV.');
-        }
-      });
-    }
-  };
-
-  const handleDownloadTemplate = () => {
-    const csvContent = "tipo,nome,equipes\nequipe,Squad Exemplo,\nempresa,Cliente Exemplo,\"Squad 1, Squad 2\"";
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "modelo_importacao.csv");
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const resetForm = () => {
+    setNewCollabName(''); setNewCollabRole(''); setNewCollabEmail('');
+    setNewCollabAccessLevel('colaborador'); setNewCollabPassword('');
+    setEditingCollabId(null);
   };
 
   const handleCollaboratorSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (newCollabName && newCollabRole) {
       const isManagerFlag = newCollabAccessLevel === 'gestor' || newCollabAccessLevel === 'admin';
-
-      if (editingCollabId) {
+      if (editingCollabId && editingCollabId !== 'new') {
         onEditCollaborator(editingCollabId, newCollabName, newCollabRole, isManagerFlag, newCollabAccessLevel);
-        setEditingCollabId(null);
       } else {
-        if (!newCollabEmail) {
-          alert("O e-mail é obrigatório para autorizar um novo membro.");
-          return;
-        }
+        if (!newCollabEmail) { alert("O e-mail é obrigatório."); return; }
         onAddCollaborator(newCollabName, newCollabRole, isManagerFlag, newCollabEmail, newCollabAccessLevel);
       }
-
-      // Handle Password Change if editing self
-      if (editingCollabId === currentUser.id && newCollabPassword) {
-        onUpdatePassword(newCollabPassword);
-      } else if (editingCollabId && newCollabPassword) {
-        // This case should be handled by UI preventing input, but purely defensively:
-        // We might alert that we can't change others' passwords directly.
-        // Ideally the UI switches to "Reset Email" button.
-      }
-
+      if (editingCollabId === currentUser.id && newCollabPassword) { onUpdatePassword(newCollabPassword); }
       resetForm();
     }
   };
 
-  const resetForm = () => {
-    setNewCollabName('');
-    setNewCollabRole('');
-    setNewCollabEmail('');
-    setNewCollabAccessLevel('colaborador');
-    setNewCollabPassword('');
-    setEditingCollabId(null);
-  };
-
-  const handleEditClick = (collab: Collaborator) => {
-    setEditingCollabId(collab.id);
-    setNewCollabName(collab.name);
-    setNewCollabRole(collab.role);
-    setNewCollabEmail('');
-    setNewCollabAccessLevel(collab.accessLevel || 'colaborador');
-    setNewCollabPassword('');
-  };
-
-  const handleAddTeamSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newTeamName) {
-      onAddTeam(newTeamName);
-      setNewTeamName('');
-    }
-  };
-
-  const handleTemplateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newTemplateName) {
-      await onAddTaskTemplate({ name: newTemplateName, description: newTemplateDesc });
-      setNewTemplateName('');
-      setNewTemplateDesc('');
-    }
-  };
-
-  const handleTaskSubmit = async (templateId: string) => {
-    if (newTaskTitle) {
-      await onAddTemplateTask(templateId, { title: newTaskTitle, description: '', priority: 'Média' });
-      setNewTaskTitle('');
-      setActiveTaskForm(null);
-    }
-  };
-
-  const handleActivitySubmit = async (templateId: string, taskId: string) => {
-    if (newActivityTitle) {
-      await onAddTemplateActivity(templateId, taskId, newActivityTitle);
-      setNewActivityTitle('');
-    }
-  };
-
-  const startEditingTemplate = (template: any) => {
-    setEditingTemplateId(template.id);
-    setEditTemplateName(template.name);
-    setEditTemplateDesc(template.description || '');
-  };
-
-  const saveTemplateEdit = async () => {
-    if (editingTemplateId && editTemplateName) {
-      await onUpdateTaskTemplate(editingTemplateId, { name: editTemplateName, description: editTemplateDesc });
-      setEditingTemplateId(null);
-    }
-  };
-
-  const startEditingTask = (task: any) => {
-    setEditingTaskId(task.id);
-    setEditTaskTitle(task.title);
-  };
-
-  const saveTaskEdit = async (templateId: string) => {
-    if (editingTaskId && editTaskTitle) {
-      await onUpdateTemplateTask(templateId, editingTaskId, { title: editTaskTitle });
-      setEditingTaskId(null);
-    }
-  };
-
   const getLevelBadge = (level?: string) => {
-    switch (level) {
-      case 'admin': return <span className="text-[10px] bg-red-100 text-red-700 font-bold px-1.5 py-0.5 rounded uppercase">Administrador</span>;
-      case 'gestor': return <span className="text-[10px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded uppercase">Gestor</span>;
-      default: return <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-1.5 py-0.5 rounded uppercase">Colaborador</span>;
-    }
+    const styles: Record<string, string> = {
+      admin: 'bg-red-500/10 text-red-600 border-red-200',
+      gestor: 'bg-amber-500/10 text-amber-600 border-amber-200',
+      colaborador: 'bg-slate-500/10 text-slate-600 border-slate-200'
+    };
+    const labels: Record<string, string> = { admin: 'Administrador', gestor: 'Gestor', colaborador: 'Colaborador' };
+    return <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${styles[level || 'colaborador']}`}>{labels[level || 'colaborador']}</span>;
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in pb-12 relative">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Configurações</h2>
-        <p className="text-slate-500">Gerencie preferências, permissões e equipe.</p>
+    <div className="max-w-6xl mx-auto animate-fade-in pb-12">
+      <div className="mb-8 px-4">
+        <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Configurações</h2>
+        <p className="text-slate-500 dark:text-slate-400 font-medium">Personalize sua experiência e gerencie sua infraestrutura.</p>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-100">
-          <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-indigo-600" />
-            Nível de Permissão
-          </h3>
+      {/* Navegação por Abas Premium */}
+      <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-white/40 dark:border-slate-700/40 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden mb-8 mx-4">
+        <div className="flex overflow-x-auto no-scrollbar border-b border-slate-100 dark:border-slate-700/50">
+          <SettingsTab active={activeTab === 'perfil'} label="Meu Perfil" icon={<User className="w-4 h-4" />} onClick={() => setActiveTab('perfil')} />
+          {(currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor') && (
+            <>
+              <SettingsTab active={activeTab === 'membros'} label="Membros" icon={<Users className="w-4 h-4" />} onClick={() => setActiveTab('membros')} />
+              <SettingsTab active={activeTab === 'equipes'} label="Equipes" icon={<Database className="w-4 h-4" />} onClick={() => setActiveTab('equipes')} />
+              <SettingsTab active={activeTab === 'templates'} label="Modelos" icon={<Layers className="w-4 h-4" />} onClick={() => setActiveTab('templates')} />
+              <SettingsTab active={activeTab === 'auditoria'} label="Auditoria" icon={<ShieldAlert className="w-4 h-4" />} onClick={() => setActiveTab('auditoria')} />
+            </>
+          )}
         </div>
 
-        <div className="p-6 space-y-4">
-          <div className="flex items-center gap-4">
-            <div className={`p-3 rounded-xl ${currentUser.accessLevel === 'admin' ? 'bg-red-50 text-red-600' : currentUser.accessLevel === 'gestor' ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-600'}`}>
-              <Shield className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="font-bold text-slate-900">Você está logado como {currentUser.accessLevel === 'admin' ? 'Administrador' : currentUser.accessLevel === 'gestor' ? 'Gestor' : 'Colaborador'}</p>
-              <p className="text-sm text-slate-500 mt-1">
-                {currentUser.accessLevel === 'admin'
-                  ? 'Você possui acesso total e irrestrito a todas as configurações, empresas, usuários e tarefas do sistema.'
-                  : currentUser.accessLevel === 'gestor'
-                    ? 'Você possui permissões de gestão para a sua equipe, podendo visualizar todas as tarefas do squad e gerenciar membros.'
-                    : 'Você possui acesso básico para execução de suas próprias tarefas e visualização de dados da sua equipe.'}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {currentUser.accessLevel === 'admin' && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-              <Layers className="w-5 h-5 text-indigo-600" />
-              Gerenciar Departamentos / Equipes
-            </h3>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={handleDownloadTemplate}
-                className="text-xs font-medium text-slate-500 hover:text-indigo-600 flex items-center gap-1 transition-colors"
-                title="Baixar Modelo CSV"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Modelo</span>
-              </button>
-
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="text-xs font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 px-4 py-1.5 rounded-xl flex items-center gap-2 transition-all hover:scale-105 active:scale-95 shadow-sm shadow-indigo-200/50"
-              >
-                <FileUp className="w-4 h-4" />
-                <span>Importar CSV/JSON</span>
-              </button>
-
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                accept=".csv,.json"
-                className="hidden"
-              />
-
-              <span className="text-[10px] uppercase tracking-wider font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-lg">
-                {teams.length} Equipes
-              </span>
-            </div>
-          </div>
-
-          <div className="p-6">
-            <div className="flex flex-wrap gap-2 mb-6">
-              {teams.map((team, idx) => (
-                <div key={idx} className="bg-slate-50 text-slate-700 px-3 py-1.5 rounded-lg border border-slate-200 text-sm flex items-center gap-2 group">
-                  <span>{team}</span>
-                  <button
-                    onClick={() => onDeleteTeam(team)}
-                    className="text-slate-400 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            <form onSubmit={handleAddTeamSubmit} className="flex gap-3">
-              <input
-                type="text"
-                placeholder="Nome da nova equipe (ex: DevOps)"
-                className="flex-1 text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={newTeamName}
-                onChange={e => setNewTeamName(e.target.value)}
-                required
-              />
-              <button
-                type="submit"
-                className="bg-slate-800 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-slate-900 transition-colors flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" /> Criar Equipe
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {(currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor') && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-              <Users className="w-5 h-5 text-indigo-600" />
-              Gerenciar Membros
-            </h3>
-            <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">{collaborators.length} membros ativos</span>
-          </div>
-
-          <div className="p-6">
-            <div className="space-y-4 mb-8">
-              <h4 className="text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Membros Ativos</h4>
-              {collaborators.map((collab) => (
-                <div key={collab.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-100">
-                  <div className="flex items-center gap-3 flex-1">
-                    <Avatar name={collab.name} src={collab.avatar} size="md" />
-                    <div>
-                      <p className="font-medium text-slate-800">{collab.name}</p>
-                      <p className="text-xs text-slate-400">{collab.email}</p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-slate-500">{collab.role}</p>
-                        {getLevelBadge(collab.accessLevel)}
-                      </div>
-                    </div>
+        <div className="p-4 md:p-8">
+          {/* SEÇÃO: PERFIL */}
+          {activeTab === 'perfil' && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex flex-col md:flex-row items-center gap-8 p-6 bg-slate-50/50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+                <Avatar name={currentUser.name} src={currentUser.avatar} size="lg" />
+                <div className="text-center md:text-left space-y-2">
+                  <div className="flex items-center justify-center md:justify-start gap-3">
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-white">{currentUser.name}</h3>
+                    {getLevelBadge(currentUser.accessLevel)}
                   </div>
-                  {currentUser.accessLevel === 'admin' && (
-                    <div className="flex gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleEditClick(collab)}
-                        className="text-slate-400 hover:text-indigo-600 p-2 hover:bg-indigo-50 rounded-lg transition-colors"
-                        title="Editar Colaborador"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onDeleteCollaborator(collab.id)}
-                        className="text-slate-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Remover Colaborador"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
+                  <p className="text-slate-500 dark:text-slate-400 font-medium">{currentUser.email}</p>
+                  <p className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">{currentUser.role}</p>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            {currentUser.accessLevel === 'admin' && (
-              <div className={`rounded-xl p-5 border transition-colors ${editingCollabId ? 'bg-amber-50/50 border-amber-200' : 'bg-indigo-50/50 border-indigo-100'}`}>
-                <h4 className={`text-sm font-semibold mb-3 flex items-center gap-2 ${editingCollabId ? 'text-amber-900' : 'text-indigo-900'}`}>
-                  {editingCollabId ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                  {editingCollabId ? 'Editar Membro' : 'Adicionar Novo Membro'}
-                </h4>
-                <form onSubmit={handleCollaboratorSubmit} className="flex flex-col gap-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div className="flex-1">
-                      <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Nome Completo</label>
-                      <input
-                        type="text"
-                        placeholder="Nome completo"
-                        className={`w-full text-sm px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 ${editingCollabId ? 'border-amber-200 focus:ring-amber-500' : 'border-indigo-200 focus:ring-indigo-500'}`}
-                        value={newCollabName}
-                        onChange={e => setNewCollabName(e.target.value)}
-                        required
-                      />
-                    </div>
-                    {!editingCollabId && (
-                      <div className="flex-1">
-                        <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">E-mail de Acesso</label>
-                        <input
-                          type="email"
-                          placeholder="E-mail de acesso"
-                          className="w-full text-sm px-3 py-2 rounded-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          value={newCollabEmail}
-                          onChange={e => setNewCollabEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Departamento / Equipe</label>
-                      <select
-                        className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        value={newCollabRole}
-                        onChange={e => setNewCollabRole(e.target.value)}
-                        required
-                      >
-                        <option value="" disabled>Selecione a Equipe</option>
-                        {teams.map((team, idx) => (
-                          <option key={idx} value={team}>{team}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Nível de Acesso</label>
-                      <select
-                        className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
-                        value={newCollabAccessLevel}
-                        onChange={e => setNewCollabAccessLevel(e.target.value)}
-                        required
-                      >
-                        <option value="colaborador">Colaborador (Padrão)</option>
-                        <option value="gestor">Gestor (Desta equipe)</option>
-                        <option value="admin">Administrador (Total)</option>
-                      </select>
-                    </div>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-6 bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+                    <Shield className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Nível de Acesso
+                  </h4>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
+                    {currentUser.accessLevel === 'admin'
+                      ? 'Acesso total ao sistema. Você pode gerenciar empresas, usuários, faturamentos e configurações globais.'
+                      : currentUser.accessLevel === 'gestor'
+                        ? 'Acesso de gestão. Você pode visualizar todas as tarefas da sua equipe e gerenciar membros do seu squad.'
+                        : 'Acesso individual. Focado na execução das suas tarefas e visualização dos dados da sua equipe.'}
+                  </p>
+                </div>
 
-
-
-                  {/* Password Change Section */}
-                  {editingCollabId && (
-                    <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                      <h5 className="text-xs font-bold text-slate-500 uppercase mb-3 flex items-center gap-2">
-                        <Lock className="w-3.5 h-3.5" /> Segurança
-                      </h5>
-
-                      {editingCollabId === currentUser.id ? (
-                        <div className="flex flex-col gap-2">
-                          <label className="text-xs font-bold text-slate-400 uppercase">Nova Senha</label>
-                          <input
-                            type="password"
-                            placeholder="Digite nova senha para alterar"
-                            className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                            value={newCollabPassword}
-                            onChange={e => setNewCollabPassword(e.target.value)}
-                            minLength={6}
-                          />
-                          <p className="text-[10px] text-slate-400">Deixe em branco para manter a atual.</p>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col gap-2">
-                          <p className="text-sm text-slate-600 mb-2">
-                            Você pode alterar a senha do usuário para uma senha padrão.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (editingCollabId && confirm('Tem certeza que deseja redefinir a senha deste usuário para "123mudar"?')) {
-                                onAdminResetPassword(editingCollabId);
-                              }
-                            }}
-                            className="w-fit flex items-center gap-2 bg-amber-100 hover:bg-amber-200 text-amber-800 text-xs font-bold px-3 py-2 rounded-lg transition-colors border border-amber-200"
-                          >
-                            <ShieldAlert className="w-3.5 h-3.5" /> Redefinir Senha para "123mudar"
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex justify-end gap-2 mt-4">
-                    {editingCollabId && (
-                      <button
-                        type="button"
-                        onClick={resetForm}
-                        className="bg-white text-slate-700 text-sm font-medium px-6 py-2 rounded-lg hover:bg-slate-50 transition-colors border border-slate-200"
-                      >
-                        Cancelar
-                      </button>
-                    )}
+                <div className="p-6 bg-white dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50 rounded-2xl shadow-sm">
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2 mb-4">
+                    <Lock className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Alterar Senha
+                  </h4>
+                  <div className="space-y-3">
+                    <input
+                      type="password"
+                      placeholder="Nova senha (mínimo 6 caracteres)"
+                      className="w-full text-sm px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none transition-all dark:text-white"
+                      value={newCollabPassword}
+                      onChange={(e) => setNewCollabPassword(e.target.value)}
+                    />
                     <button
-                      type="submit"
-                      className={`text-white text-sm font-medium px-8 py-2 rounded-lg transition-colors shadow-sm whitespace-nowrap flex items-center gap-2 ${editingCollabId ? 'bg-amber-600 hover:bg-amber-700' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                      onClick={() => {
+                        if (newCollabPassword.length < 6) return alert('Senha muito curta.');
+                        onUpdatePassword(newCollabPassword);
+                        setNewCollabPassword('');
+                      }}
+                      className="w-full py-2 bg-slate-900 dark:bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-slate-800 dark:hover:bg-indigo-500 transition-colors"
                     >
-                      {editingCollabId ? <Save className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-                      {editingCollabId ? 'Salvar Alterações' : 'Adicionar Membro'}
+                      Atualizar Senha
                     </button>
                   </div>
-                </form>
-              </div>
-            )}
-
-            {/* Acessos Autorizados (Convites Pendentes) - Apenas Admin */}
-            {currentUser.accessLevel === 'admin' && (
-              <div className="mt-8 pt-8 border-t border-slate-100">
-                <div className="flex items-center justify-between mb-4">
-                  <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Convites Pendentes / Acessos Autorizados</h4>
-                  <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full">{authorizedEmails.length} autorizados</span>
                 </div>
+              </div>
+            </div>
+          )}
 
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                  {authorizedEmails.map((auth) => (
-                    <div key={auth.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-100 shadow-sm hover:border-indigo-100 transition-colors">
-                      <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 bg-indigo-50 rounded-full flex items-center justify-center text-xs font-bold text-indigo-600 border border-indigo-100">
-                          {auth.email[0].toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-800 text-sm">{auth.email}</p>
-                          <div className="flex items-center gap-2 text-xs text-slate-500">
-                            <span>{auth.full_name || 'Sem nome'}</span>
-                            <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
-                            <span>{auth.role || 'Sem equipe'}</span>
-                            <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-                            {getLevelBadge(auth.access_level)}
-                          </div>
+          {/* SEÇÃO: MEMBROS */}
+          {activeTab === 'membros' && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Gestão de Colaboradores</h3>
+                <button
+                  onClick={() => setEditingCollabId('new')}
+                  className="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-100 dark:shadow-none"
+                >
+                  <Plus className="w-4 h-4" /> Novo Membro
+                </button>
+              </div>
+
+              {(editingCollabId === 'new' || (editingCollabId && editingCollabId !== 'new')) && (
+                <div className="p-6 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/50 rounded-2xl space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-300">{editingCollabId === 'new' ? 'Adicionar Novo' : 'Editar Membro'}</h4>
+                    <button onClick={resetForm} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X className="w-4 h-4" /></button>
+                  </div>
+                  <form onSubmit={handleCollaboratorSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Nome Full</label>
+                      <input type="text" className="w-full text-sm px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" value={newCollabName} onChange={e => setNewCollabName(e.target.value)} required />
+                    </div>
+                    {editingCollabId === 'new' && (
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">E-mail</label>
+                        <input type="email" className="w-full text-sm px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" value={newCollabEmail} onChange={e => setNewCollabEmail(e.target.value)} required />
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Equipe / Squad</label>
+                      <select className="w-full text-sm px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" value={newCollabRole} onChange={e => setNewCollabRole(e.target.value)} required>
+                        <option value="">Selecione...</option>
+                        {teams?.map((t, i) => <option key={i} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Nível de Acesso</label>
+                      <select className="w-full text-sm px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 font-bold dark:text-white" value={newCollabAccessLevel} onChange={e => setNewCollabAccessLevel(e.target.value)}>
+                        <option value="colaborador">Colaborador</option>
+                        <option value="gestor">Gestor</option>
+                        <option value="admin">Administrador</option>
+                      </select>
+                    </div>
+                    <div className="md:col-span-2 flex justify-end gap-3 mt-2">
+                      {editingCollabId !== 'new' && editingCollabId !== currentUser.id && (
+                        <button type="button" onClick={() => onAdminResetPassword(editingCollabId!)} className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold rounded-xl hover:bg-amber-200 border border-amber-200 dark:border-amber-800">Resetar Senha para "123mudar"</button>
+                      )}
+                      <button type="submit" className="px-8 py-2 bg-slate-900 dark:bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-slate-800 dark:hover:bg-indigo-500 transition-transform active:scale-95 shadow-lg shadow-slate-200 dark:shadow-none">Salvar Dados</button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {collaborators.map(collab => (
+                  <div key={collab.id} className="group p-4 bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 rounded-2xl flex items-center justify-between hover:border-indigo-200 dark:hover:border-indigo-700 hover:shadow-lg hover:shadow-slate-100 dark:hover:shadow-none transition-all">
+                    <div className="flex items-center gap-4">
+                      <Avatar name={collab.name} src={collab.avatar} size="md" />
+                      <div>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">{collab.name}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">{collab.role}</span>
+                          <div className="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
+                          {getLevelBadge(collab.accessLevel)}
                         </div>
                       </div>
-                      <button
-                        onClick={() => onDeleteAuthorizedEmail(auth.id)}
-                        className="text-slate-300 hover:text-red-500 p-2 transition-colors"
-                        title="Revogar Autorização"
-                      >
-                        <Trash2 className="w-4 h-4" />
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => {
+                        setEditingCollabId(collab.id);
+                        setNewCollabName(collab.name);
+                        setNewCollabRole(collab.role);
+                        setNewCollabAccessLevel(collab.accessLevel || 'colaborador');
+                      }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
+                      {currentUser.accessLevel === 'admin' && collab.id !== currentUser.id && (
+                        <button onClick={() => onDeleteCollaborator(collab.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {authorizedEmails.length > 0 && (
+                <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-700">
+                  <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6">Convites Pendentes / Autorizados</h4>
+                  <div className="space-y-2">
+                    {authorizedEmails.map(auth => (
+                      <div key={auth.id} className="p-3 bg-slate-50/50 dark:bg-slate-900/20 rounded-xl flex items-center justify-between border border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
+                            {auth.email ? auth.email[0].toUpperCase() : '?'}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{auth.email || 'E-mail indisponível'}</p>
+                            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">{auth.role} • {auth.access_level}</p>
+                          </div>
+                        </div>
+                        <button onClick={() => onDeleteAuthorizedEmail(auth.id)} className="p-2 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SEÇÃO: EQUIPES */}
+          {activeTab === 'equipes' && (
+            <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="max-w-2xl bg-white dark:bg-slate-800/40 p-8 border border-slate-100 dark:border-slate-700/50 rounded-[2rem] shadow-sm space-y-8">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Gerenciar Departamentos & Equipes</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Estruture sua organização adicionando squads ou departamentos.</p>
+                </div>
+
+                <div className="flex flex-wrap gap-2.5">
+                  {teams.map((team, idx) => (
+                    <div key={idx} className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 group hover:border-red-200 dark:hover:border-red-900 transition-colors shadow-sm">
+                      {team}
+                      <button onClick={() => { if (confirm(`Remover equipe "${team}"?`)) onDeleteTeam(team); }} className="text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 transition-colors">
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
-                  {authorizedEmails.length === 0 && (
-                    <div className="text-center py-10 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
-                      <Lock className="w-6 h-6 text-slate-300 mx-auto mb-2" />
-                      <p className="text-slate-400 text-xs italic">Nenhum convite pendente.</p>
-                    </div>
-                  )}
+                </div>
+
+                <div className="pt-6 border-t border-slate-50 dark:border-slate-800">
+                  <form onSubmit={(e) => { e.preventDefault(); if (newTeamName) { onAddTeam(newTeamName); setNewTeamName(''); } }} className="flex gap-3">
+                    <input
+                      type="text"
+                      placeholder="Nome da nova equipe (ex: Suporte Técnico)"
+                      className="flex-1 text-sm px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white transition-all shadow-inner"
+                      value={newTeamName}
+                      onChange={e => setNewTeamName(e.target.value)}
+                      required
+                    />
+                    <button type="submit" className="px-6 bg-slate-900 dark:bg-indigo-600 text-white rounded-2xl hover:bg-slate-800 dark:hover:bg-indigo-500 transition-all active:scale-90 shadow-lg shadow-slate-200 dark:shadow-none flex items-center justify-center">
+                      <Plus className="w-5 h-5" />
+                    </button>
+                  </form>
                 </div>
               </div>
-            )}
-          </div>
-        </div >
-      )}
+            </div>
+          )}
 
-      {(currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor') && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-          <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-              <Layers className="w-5 h-5 text-indigo-600" />
-              Modelos de Tarefas (Templates)
-            </h3>
-            <span className="text-xs font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded-full">{taskTemplates.length} modelos</span>
-          </div>
+          {/* SEÇÃO: TEMPLATES */}
+          {activeTab === 'templates' && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">Modelos de Checklist</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Automatize o planejamento de checklists recorrentes.</p>
+                </div>
+                <button
+                  onClick={() => setEditingTemplateId('new')}
+                  className="px-4 py-2 bg-slate-900 dark:bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-slate-800 dark:hover:bg-indigo-500 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 dark:shadow-none"
+                >
+                  <Plus className="w-4 h-4" /> Novo Template
+                </button>
+              </div>
 
-          <div className="p-6">
-            <p className="text-sm text-slate-500 mb-6 font-medium">Crie estruturas de tarefas repetitivas para agilizar o lançamento de novos projetos ou demandas fixas.</p>
+              {editingTemplateId === 'new' && (
+                <div className="p-6 bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-700 rounded-3xl animate-in zoom-in-95 duration-200">
+                  <form onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (newTemplateName) {
+                      await onAddTaskTemplate({ name: newTemplateName, description: newTemplateDesc });
+                      setNewTemplateName(''); setNewTemplateDesc(''); setEditingTemplateId(null);
+                    }
+                  }} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <input placeholder="Nome do Modelo (ex: Integração Cliente)" className="px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none text-sm dark:text-white focus:ring-2 focus:ring-indigo-500" value={newTemplateName} onChange={e => setNewTemplateName(e.target.value)} required />
+                      <input placeholder="Descrição Curta" className="px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none text-sm dark:text-white focus:ring-2 focus:ring-indigo-500" value={newTemplateDesc} onChange={e => setNewTemplateDesc(e.target.value)} />
+                    </div>
+                    <div className="flex justify-end gap-3 pt-2">
+                      <button type="button" onClick={() => setEditingTemplateId(null)} className="px-6 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700">Cancelar</button>
+                      <button type="submit" className="px-8 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-500 shadow-lg shadow-indigo-100 dark:shadow-none active:scale-95">Criar Modelo</button>
+                    </div>
+                  </form>
+                </div>
+              )}
 
-            <div className="space-y-4 mb-8">
-              {taskTemplates.map((template) => (
-                <div key={template.id} className="border border-slate-100 rounded-xl overflow-hidden bg-slate-50/30">
-                  <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors" onClick={() => setExpandedTemplate(expandedTemplate === template.id ? null : template.id)}>
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="bg-indigo-600 p-2 rounded-lg">
-                        <Layers className="w-4 h-4 text-white" />
+              <div className="grid grid-cols-1 gap-4">
+                {taskTemplates.map(template => (
+                  <div key={template.id} className="group border border-slate-100 dark:border-slate-700/50 rounded-2xl bg-white dark:bg-slate-800/40 overflow-hidden hover:border-indigo-200 dark:hover:border-indigo-800 transition-all shadow-sm">
+                    <div className="p-5 flex items-center justify-between cursor-pointer" onClick={() => setExpandedTemplate(expandedTemplate === template.id ? null : template.id)}>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800"><Layers className="w-5 h-5" /></div>
+                        <div>
+                          <h4 className="font-bold text-slate-900 dark:text-white tracking-tight">{template.name}</h4>
+                          <p className="text-xs text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">{template.description || 'Sem descrição específica'}</p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        {editingTemplateId === template.id ? (
-                          <div className="space-y-2" onClick={e => e.stopPropagation()}>
-                            <input
-                              type="text"
-                              className="w-full text-sm font-bold bg-white border border-indigo-200 px-2 py-1 rounded"
-                              value={editTemplateName}
-                              onChange={e => setEditTemplateName(e.target.value)}
-                            />
-                            <input
-                              type="text"
-                              className="w-full text-xs bg-white border border-slate-200 px-2 py-1 rounded"
-                              value={editTemplateDesc}
-                              onChange={e => setEditTemplateDesc(e.target.value)}
-                            />
-                            <div className="flex gap-2">
-                              <button onClick={saveTemplateEdit} className="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded">Salvar</button>
-                              <button onClick={() => setEditingTemplateId(null)} className="text-[10px] bg-slate-200 text-slate-600 px-2 py-1 rounded">Cancelar</button>
+                      <div className="flex items-center gap-4">
+                        <span className="hidden sm:inline-block text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-800">{template.tasks.length} Objetivos</span>
+                        <ChevronRight className={`w-5 h-5 text-slate-300 dark:text-slate-600 transition-transform duration-300 ${expandedTemplate === template.id ? 'rotate-90 text-indigo-500' : ''}`} />
+                        <button onClick={(e) => { e.stopPropagation(); if (confirm('Excluir este modelo permanentemente?')) onDeleteTaskTemplate(template.id); }} className="p-2 text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </div>
+
+                    {expandedTemplate === template.id && (
+                      <div className="p-6 bg-slate-50/50 dark:bg-slate-900/40 border-t border-slate-100 dark:border-slate-700/50 space-y-6 animate-in slide-in-from-top-2 duration-300">
+                        <div className="space-y-4">
+                          {template.tasks.map((tk: any) => (
+                            <div key={tk.id} className="p-5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+                              <div className="flex items-center justify-between mb-4">
+                                <h5 className="text-sm font-bold text-slate-800 dark:text-200 flex items-center gap-2"><CheckSquare className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> {tk.title}</h5>
+                                <button onClick={() => onDeleteTemplateTask(template.id, tk.id)} className="text-slate-300 dark:text-slate-600 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                              </div>
+                              <div className="flex flex-wrap gap-2 mb-4">
+                                {tk.activities.map((act: any) => (
+                                  <div key={act.id} className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-900 rounded-xl text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 border border-slate-100 dark:border-slate-800 group/act">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-400 dark:bg-indigo-500" />
+                                    {act.title}
+                                    <button onClick={() => onDeleteTemplateActivity(template.id, tk.id, act.id)} className="opacity-0 group-hover/act:opacity-100 transition-all active:scale-95"><X className="w-3.5 h-3.5 text-red-400" /></button>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="flex gap-2">
+                                <input placeholder="Adicionar atividade ao checklist..." className="flex-1 text-xs px-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" onKeyDown={e => { if (e.key === 'Enter') { onAddTemplateActivity(template.id, tk.id, e.currentTarget.value); e.currentTarget.value = ''; } }} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <button onClick={() => setActiveTaskForm(template.id)} className="w-full py-5 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-3xl text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-300 dark:hover:border-indigo-700 transition-all font-black text-xs uppercase tracking-widest flex items-center justify-center gap-3">
+                          <Plus className="w-5 h-5" /> Adicionar Tarefa ao Modelo
+                        </button>
+                        {activeTaskForm === template.id && (
+                          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+                            <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl space-y-6 animate-in zoom-in-95 duration-200 border border-white/20 dark:border-slate-700">
+                              <div className="space-y-2">
+                                <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Nova Tarefa</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Defina o objetivo principal desta etapa do checklist.</p>
+                              </div>
+                              <input
+                                autoFocus
+                                placeholder="Ex: Configuração de DNS"
+                                className="w-full px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white text-sm"
+                                value={newTaskTitle}
+                                onChange={e => setNewTaskTitle(e.target.value)}
+                              />
+                              <div className="flex justify-end gap-3 pt-4">
+                                <button onClick={() => { setActiveTaskForm(null); setNewTaskTitle(''); }} className="px-6 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700">Cancelar</button>
+                                <button onClick={() => {
+                                  if (newTaskTitle) {
+                                    onAddTemplateTask(template.id, { title: newTaskTitle, priority: 'Média' });
+                                    setActiveTaskForm(null);
+                                    setNewTaskTitle('');
+                                  }
+                                }} className="px-10 py-2.5 bg-indigo-600 text-white text-xs font-black rounded-2xl shadow-xl shadow-indigo-200 dark:shadow-none uppercase tracking-wider active:scale-95 transition-transform">Salvar Etapa</button>
+                              </div>
                             </div>
                           </div>
-                        ) : (
-                          <>
-                            <p className="font-bold text-slate-800">{template.name}</p>
-                            <p className="text-xs text-slate-500">{template.description || 'Sem descrição'}</p>
-                          </>
                         )}
                       </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-bold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full uppercase">
-                        {template.tasks.length} Tarefas
-                      </span>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); startEditingTemplate(template); }}
-                        className="text-slate-400 hover:text-indigo-600 transition-colors p-1"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); onDeleteTaskTemplate(template.id); }} className="text-slate-400 hover:text-red-500 transition-colors p-1">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    )}
                   </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                  {expandedTemplate === template.id && (
-                    <div className="p-4 bg-white border-t border-slate-100 space-y-4 animate-fade-in shadow-inner">
-                      <div className="space-y-4">
-                        {template.tasks.map((tk: any) => (
-                          <div key={tk.id} className="pl-4 border-l-2 border-indigo-200 py-2">
-                            <div className="flex items-center justify-between mb-2">
-                              {editingTaskId === tk.id ? (
-                                <div className="flex gap-2 items-center flex-1 pr-4">
-                                  <input
-                                    type="text"
-                                    className="flex-1 text-sm font-semibold bg-white border border-indigo-200 px-2 py-1 rounded"
-                                    value={editTaskTitle}
-                                    onChange={e => setEditTaskTitle(e.target.value)}
-                                  />
-                                  <button onClick={() => saveTaskEdit(template.id)} className="text-[10px] bg-indigo-600 text-white px-2 py-1 rounded">Salvar</button>
-                                  <button onClick={() => setEditingTaskId(null)} className="text-[10px] bg-slate-200 text-slate-600 px-2 py-1 rounded">X</button>
-                                </div>
-                              ) : (
-                                <p className="font-semibold text-slate-700 text-sm flex items-center gap-2">
-                                  <CheckSquare className="w-3.5 h-3.5 text-indigo-600" /> {tk.title}
-                                </p>
-                              )}
-                              <div className="flex gap-1">
-                                <button
-                                  onClick={() => startEditingTask(tk)}
-                                  className="text-slate-300 hover:text-indigo-600 transition-colors p-1"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => onDeleteTemplateTask(template.id, tk.id)}
-                                  className="text-slate-300 hover:text-red-500 transition-colors p-1"
-                                  title="Excluir tarefa do modelo"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            </div>
+          {/* SEÇÃO: AUDITORIA */}
+          {activeTab === 'auditoria' && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Registro de Auditoria</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Acompanhe as últimas ações realizadas no sistema.</p>
+              </div>
 
-                            {/* Atividades / Checklist */}
-                            <div className="space-y-1.5 ml-5">
-                              {tk.activities.map((act: any) => (
-                                <div key={act.id} className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-2 py-1 rounded w-fit group">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-indigo-300"></div>
-                                  {act.title}
-                                  <button
-                                    onClick={() => onDeleteTemplateActivity(template.id, tk.id, act.id)}
-                                    className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-all p-0.5"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ))}
+              <div className="relative space-y-4 before:absolute before:inset-y-0 before:left-5 before:w-0.5 before:bg-slate-100 dark:before:bg-slate-800">
+                {activityLogs?.map((log, i) => (
+                  <div key={log.id || i} className="relative flex items-start gap-6 group">
+                    <div className={`mt-1 w-10 h-10 rounded-full flex items-center justify-center shrink-0 z-10 transition-transform group-hover:scale-110 shadow-sm ${log.action?.includes('criou') ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                      log.action?.includes('excluiu') ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400' :
+                        'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                      }`}>
+                      {log.entity_type === 'tarefa' ? <CheckSquare className="w-4 h-4" /> :
+                        log.entity_type === 'colaborador' ? <Users className="w-4 h-4" /> :
+                          <Database className="w-4 h-4" />}
+                    </div>
 
-                              <div className="flex gap-2 mt-2">
-                                <input
-                                  type="text"
-                                  placeholder="Nova atividade..."
-                                  className="text-[11px] px-2 py-1 rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400 w-40"
-                                  value={newActivityTitle || ''}
-                                  onChange={e => setNewActivityTitle(e.target.value)}
-                                  onKeyDown={(e) => e.key === 'Enter' && handleActivitySubmit(template.id, tk.id)}
-                                />
-                                <button onClick={() => handleActivitySubmit(template.id, tk.id)} className="text-[10px] bg-slate-800 text-white px-2 py-1 rounded hover:bg-slate-900">Add</button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                    <div className="p-4 bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 rounded-2xl flex-1 shadow-sm group-hover:shadow-md transition-all">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                          {log.user_name} <span className="font-medium text-slate-400 dark:text-slate-500 mx-1"> {log.action} </span>
+                          {log.entity_type} <span className="text-indigo-600 dark:text-indigo-400">"{log.entity_name}"</span>
+                        </p>
+                        <time className="text-[10px] font-black text-slate-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-900 px-2 py-0.5 rounded-lg">
+                          {new Date(log.created_at).toLocaleString('pt-BR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                        </time>
                       </div>
-
-                      {activeTaskForm === template.id ? (
-                        <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
-                          <input
-                            autoFocus
-                            type="text"
-                            placeholder="Título da Tarefa do Modelo"
-                            className="w-full text-sm px-3 py-2 rounded-lg border border-slate-200 mb-2"
-                            value={newTaskTitle}
-                            onChange={e => setNewTaskTitle(e.target.value)}
-                          />
-                          <div className="flex justify-end gap-2 text-xs">
-                            <button onClick={() => setActiveTaskForm(null)} className="px-3 py-1.5 text-slate-600 hover:bg-slate-200 rounded">Cancelar</button>
-                            <button onClick={() => handleTaskSubmit(template.id)} className="bg-indigo-600 text-white px-4 py-1.5 rounded hover:bg-indigo-700 font-bold">Salvar Tarefa</button>
-                          </div>
+                      {log.details && Object.keys(log.details).length > 0 && (
+                        <div className="text-[11px] text-slate-500 dark:text-slate-400 italic bg-slate-50 dark:bg-slate-900/30 p-2 rounded-lg border border-slate-100 dark:border-slate-800 mt-2">
+                          {JSON.stringify(log.details)}
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => setActiveTaskForm(template.id)}
-                          className="w-full py-2 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 hover:text-indigo-600 hover:border-indigo-300 transition-all text-xs font-bold flex items-center justify-center gap-2"
-                        >
-                          <Plus className="w-3.5 h-3.5" /> Adicionar Tarefa ao Modelo
-                        </button>
                       )}
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                  </div>
+                ))}
 
-            <div className="bg-indigo-50/50 border border-indigo-100 rounded-xl p-5">
-              <h4 className="text-sm font-semibold text-indigo-900 mb-4 flex items-center gap-2">
-                <Plus className="w-4 h-4" /> Criar Novo Modelo de Checklist
-              </h4>
-              <form onSubmit={handleTemplateSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="Nome do Modelo (ex: Auditoria Mensal)"
-                  className="text-sm px-3 py-2 rounded-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={newTemplateName}
-                  onChange={e => setNewTemplateName(e.target.value)}
-                  required
-                />
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Descrição breve"
-                    className="flex-1 text-sm px-3 py-2 rounded-lg border border-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={newTemplateDesc}
-                    onChange={e => setNewTemplateDesc(e.target.value)}
-                  />
-                  <button type="submit" className="bg-indigo-600 text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap">
-                    Criar Modelo
-                  </button>
-                </div>
-              </form>
+                {activityLogs.length === 0 && (
+                  <div className="py-12 text-center">
+                    <ShieldAlert className="w-10 h-10 text-slate-200 dark:text-slate-800 mx-auto mb-3" />
+                    <p className="text-sm text-slate-400 dark:text-slate-500 font-medium tracking-tight">Nenhuma atividade registrada ainda.</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
-      )
-      }
-
-
-
-    </div >
+      </div>
+    </div>
   );
 };

@@ -62,8 +62,14 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       if (!isoString) return '';
       try {
         const date = new Date(isoString);
+        if (isNaN(date.getTime())) return '';
+
         let hours = date.getHours();
         let minutes = date.getMinutes();
+
+        // Garantir que sejam números válidos
+        if (isNaN(hours)) hours = 8;
+        if (isNaN(minutes)) minutes = 0;
 
         // Aplicar regras de negócio (08:00 - 18:00)
         if (hours < 8) {
@@ -110,7 +116,9 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
       });
       setSelectedCompanyIds([taskToEdit.companyId]);
       setReplicateToAllMembers(false);
+      setReplicateToAllMembers(false);
       setSelectedFile(null); // Reset file
+      setCreationMode('nova'); // Força visualização dos inputs
     } else {
       const defaultDate = preselectedDate
         ? (preselectedDate.length === 10 ? `${preselectedDate}T12:00` : formatForDateTimeLocal(preselectedDate))
@@ -161,6 +169,15 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         return;
       }
       setIsUploading(false);
+    }
+
+    // Validação de Prazo Retroativo (Geral para todos os modos)
+    if (formData.dueDate) {
+      const selectedDeadline = new Date(formData.dueDate);
+      if (selectedDeadline <= new Date()) {
+        alert('O prazo (Deadline) não pode ser igual ou menor que a hora atual.');
+        return;
+      }
     }
 
     if (creationMode === 'modelo') {
@@ -232,10 +249,6 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
         alert('Por favor, defina o Prazo (Data e Hora) para o lembrete.');
         return;
       }
-
-
-
-
 
       // Normalização de Datas para ISO UTC
       let finalDueDate = formData.dueDate;
@@ -457,7 +470,8 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             </div>
           )}
 
-          {(creationMode === 'nova' || creationMode === 'lembrete') && (
+
+          {(creationMode !== 'modelo' || !!taskToEdit) && (
             <div className="space-y-1">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2">
                 <Type className="w-4 h-4 text-slate-400" /> {creationMode === 'lembrete' ? 'Título do Lembrete' : 'Título da Tarefa'}
@@ -473,7 +487,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
             </div>
           )}
 
-          {(creationMode === 'nova' || creationMode === 'lembrete') && (
+          {(creationMode !== 'modelo' || !!taskToEdit) && (
             <div className="space-y-1">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Descrição</label>
               <textarea
@@ -629,6 +643,7 @@ export const CreateTaskModal: React.FC<CreateTaskModalProps> = ({
                 <input
                   type="date"
                   required
+                  min={new Date().toISOString().split('T')[0]}
                   className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                   value={formData.dueDate.split('T')[0]}
                   onChange={e => {

@@ -46,13 +46,29 @@ export interface Task {
   completedAt?: string; // ISO Date string
   faqId?: string; // Reference to FAQItem ID
   reminder?: string; // ISO string for reminder date/time
-  checklist?: { title: string, completed: boolean }[];
+  checklist?: {
+    title: string;
+    completed: boolean;
+    completedBy?: string;
+    completedByName?: string;
+  }[];
   repeatFrequency?: 'none' | 'daily' | 'weekly' | 'monthly';
   creatorId?: string;
   attachmentUrl?: string; // URL for attached document (e.g. PDF)
   isReplicated?: boolean;
   notes?: string;
   dueNotificationSent?: boolean; // Track if due date notification email was sent
+  transferHistory?: {
+    type?: 'criacao' | 'transferencia' | 'delegacao' | 'devolucao' | 'finalizacao';
+    fromId: string;
+    fromName: string;
+    toId: string;
+    toName: string;
+    date: string;
+    deadline?: string;
+    projectName?: string;
+    notes?: string;
+  }[];
 }
 
 export type TaskInput = Omit<Task, 'id' | 'createdAt' | 'startedAt' | 'completedAt' | 'companyId'>;
@@ -95,4 +111,15 @@ export interface TaskTemplate {
   name: string;
   description: string;
   tasks: TemplateTask[];
+}
+export interface ActivityLog {
+  id: string;
+  created_at: string;
+  user_id: string;
+  user_name: string;
+  action: string;
+  entity_type: string;
+  entity_id?: string;
+  entity_name?: string;
+  details?: any;
 }

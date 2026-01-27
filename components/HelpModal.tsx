@@ -80,6 +80,28 @@ export const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose, isAdmin }
 
             // Bold and Normal text
             const parts = line.split(/(\*\*.*?\*\*)/);
+
+            // Check for Q: and A: on same line and force split if needed
+            if ((line.includes('Q:') || line.includes('P:')) && (line.includes('A:') || line.includes('R:'))) {
+                const splitPattern = (line.includes('A:') || line.includes('R:')) ? /(A:|R:)/ : /R:/;
+                const parts = line.split(splitPattern);
+
+                // Normalizing P: and R:
+                const qText = parts[0].replace('Q:', 'P:').trim();
+                const aText = parts[parts.length - 1].trim();
+
+                return (
+                    <div key={index} className="mb-4">
+                        <p className="text-black dark:text-slate-200 text-lg leading-relaxed">
+                            <strong className="text-indigo-600">P:</strong> {qText.replace('P:', '').trim()}
+                        </p>
+                        <p className="text-black dark:text-slate-200 text-lg leading-relaxed mt-2">
+                            <strong className="text-emerald-600">R:</strong> {aText.trim()}
+                        </p>
+                    </div>
+                );
+            }
+
             return (
                 <p key={index} className="text-black dark:text-slate-200 text-lg leading-relaxed mb-4">
                     {parts.map((part, pIdx) => {

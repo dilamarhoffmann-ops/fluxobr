@@ -228,6 +228,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
                                             className="flex items-center gap-1.5 px-1.5 py-1 rounded text-[10px] bg-slate-50 dark:bg-slate-700/50 border border-slate-100 dark:border-slate-600 truncate group-hover:border-indigo-100"
                                         >
                                             <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${getStatusColor(task.status)}`} />
+                                            <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 mr-0.5">#{task.id.substring(0, 4).toUpperCase()}</span>
                                             <span className="truncate text-slate-600 dark:text-slate-300 font-medium">{task.title}</span>
                                         </div>
                                     ))}
@@ -354,9 +355,12 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
                                                     <div className="flex justify-between items-start mb-4">
                                                         <div className="flex items-center gap-3">
                                                             <div className={`w-3 h-3 rounded-full ${getStatusColor(task.status)} shadow-sm`} />
-                                                            <h4 className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">
-                                                                {task.title}
-                                                            </h4>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest leading-none mb-1">ID: #{task.id.substring(0, 4).toUpperCase()}</span>
+                                                                <h4 className="font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 transition-colors uppercase tracking-tight">
+                                                                    {task.title}
+                                                                </h4>
+                                                            </div>
                                                         </div>
                                                         <div className="flex items-center gap-2">
                                                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-tighter ${task.status === TaskStatus.DONE ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :

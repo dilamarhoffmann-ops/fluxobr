@@ -75,7 +75,7 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ tasks, collabo
     const completed = memberTasks.filter(t => t.status === TaskStatus.DONE).length;
     const total = memberTasks.length;
     return {
-      name: collab.name.split(' ')[0],
+      name: collab.name.split(' ').slice(0, 2).join(' '),
       completed,
       total,
       percentage: total > 0 ? (completed / total) * 100 : 0

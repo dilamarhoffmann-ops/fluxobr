@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { INITIAL_TASKS, COLLABORATORS, COMPANIES, INITIAL_TEAMS, INITIAL_FAQS } from './constants';
-import { Task, TaskInput, TaskStatus, Company, Collaborator, FAQItem } from './types';
+import { Task, TaskInput, TaskStatus, Company, Collaborator, FAQItem, ActivityLog } from './types';
 import { LayoutDashboard, CheckSquare, Settings as SettingsIcon, Bell, Menu, Building2, HelpCircle, LogOut, Calendar, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { MetricsRow } from './components/MetricsCards';
 import { DashboardCharts } from './components/DashboardCharts';
@@ -44,6 +44,7 @@ const App: React.FC = () => {
   const [teams, setTeams] = useState<string[]>([]);
   const [faqs, setFaqs] = useState<FAQItem[]>([]);
   const [taskTemplates, setTaskTemplates] = useState<any[]>([]);
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   // Current User Profile (from DB)
@@ -94,6 +95,7 @@ const App: React.FC = () => {
     attachmentUrl: data.attachment_url,
     isReplicated: data.is_replicated,
     notes: data.notes || '',
+    transferHistory: data.transfer_history || [],
   });
 
   const mapCompanyFromDB = (data: any): Company => {
@@ -207,6 +209,10 @@ const App: React.FC = () => {
         // Load Tasks
         const { data: tasksData } = await db.getAll('tasks');
         if (tasksData) setTasks(tasksData.map(mapTaskFromDB));
+
+        // Load Activity Logs
+        const { data: logsData } = await db.from('activity_logs').select('*').order('created_at', { ascending: false }).limit(100);
+        if (logsData) setActivityLogs(logsData);
 
       } catch (error) {
         console.error('Error loading data:', error);
@@ -366,6 +372,21 @@ const App: React.FC = () => {
     return { totalTasks, completedTasks, archivedTasks, overdueTasks, completionRate };
   }, [filteredTasks]);
 
+  const handleAddLog = async (action: string, entityType: string, entityId?: string, entityName?: string, details?: any) => {
+    if (!currentUserProfile) return;
+    const log = {
+      user_id: currentUserProfile.id,
+      user_name: currentUserProfile.name,
+      action,
+      entity_type: entityType,
+      entity_id: entityId,
+      entity_name: entityName,
+      details
+    };
+    const { data } = await db.logActivity(log);
+    if (data) setActivityLogs(prev => [data[0] as ActivityLog, ...prev].slice(0, 100)); // Keep last 100
+  };
+
   const handleUpdateStatus = async (taskId: string, newStatus: TaskStatus) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
@@ -409,15 +430,30 @@ const App: React.FC = () => {
         startedAt: updates.started_at || t.startedAt,
         completedAt: updates.completed_at === null ? undefined : (updates.completed_at || t.completedAt)
       } : t));
+      handleAddLog('atualizou status', 'tarefa', taskId, task.title, { status: newStatus });
     }
   };
 
   const handleToggleChecklistItem = async (taskId: string, index: number) => {
     const task = tasks.find(t => t.id === taskId);
-    if (!task || !task.checklist) return;
+    if (!task || !task.checklist || !currentUserProfile) return;
+
+    const item = task.checklist[index];
+    const isMarkingAsComplete = !item.completed;
+
+    // REGRA: Se estiver desmarcando, verifique se foi o mesmo usuário que marcou
+    if (!isMarkingAsComplete && item.completedBy && item.completedBy !== currentUserProfile.id) {
+      alert(`Apenas o colaborador ${item.completedByName || 'que concluiu'} pode desmarcar este item.`);
+      return;
+    }
 
     const newChecklist = [...task.checklist];
-    newChecklist[index].completed = !newChecklist[index].completed;
+    newChecklist[index] = {
+      ...item,
+      completed: isMarkingAsComplete,
+      completedBy: isMarkingAsComplete ? currentUserProfile.id : undefined,
+      completedByName: isMarkingAsComplete ? currentUserProfile.name : undefined
+    };
 
     // Verifica quantos itens estão completos
     const completedCount = newChecklist.filter(item => item.completed).length;
@@ -483,6 +519,22 @@ const App: React.FC = () => {
     if (updates.attachmentUrl !== undefined) dbUpdates.attachment_url = updates.attachmentUrl;
     if (updates.checklist !== undefined) dbUpdates.checklist = updates.checklist;
 
+    const originalTask = tasks.find(t => t.id === taskId);
+    if (updates.status === TaskStatus.DONE && originalTask?.status !== TaskStatus.DONE) {
+      const completionEntry = {
+        type: 'finalizacao' as const,
+        fromId: originalTask?.assigneeId || 'sistema',
+        fromName: collaborators.find(c => c.id === originalTask?.assigneeId)?.name || 'Responsável',
+        toId: 'sistema',
+        toName: 'Concluído',
+        date: new Date().toISOString()
+      };
+      const updatedHistory = [...(originalTask?.transferHistory || []), completionEntry];
+      updates.transferHistory = updatedHistory;
+    }
+
+    if (updates.transferHistory !== undefined) dbUpdates.transfer_history = updates.transferHistory;
+
     const { error } = await db.update('tasks', taskId, dbUpdates);
     if (!error) {
       setTasks(prev => {
@@ -539,6 +591,7 @@ const App: React.FC = () => {
       const { error } = await db.update('tasks', editingTask.id, dbTask);
       if (!error) {
         setTasks(prev => prev.map(t => t.id === editingTask.id ? { ...t, ...taskInput, companyId: targetCompanyIds[0] } : t));
+        handleAddLog('editou', 'tarefa', editingTask.id, taskInput.title);
       }
     } else {
       const tasksToAdd: any[] = [];
@@ -567,6 +620,14 @@ const App: React.FC = () => {
                 started_at: taskInput.status === TaskStatus.IN_PROGRESS ? now : null,
                 attachment_url: taskInput.attachmentUrl || null,
                 is_replicated: true,
+                transfer_history: [{
+                  type: 'criacao',
+                  fromId: authUser?.id || 'sistema',
+                  fromName: currentUserProfile?.name || 'Sistema',
+                  toId: collab.id,
+                  toName: collab.name,
+                  date: now
+                }]
               });
             });
           } else {
@@ -585,19 +646,32 @@ const App: React.FC = () => {
               checklist: taskInput.checklist || [],
               repeat_frequency: taskInput.repeatFrequency || 'none',
               started_at: taskInput.status === TaskStatus.IN_PROGRESS ? now : null,
-              is_replicated: false
+              is_replicated: false,
+              transfer_history: [{
+                type: 'criacao',
+                fromId: authUser?.id || 'sistema',
+                fromName: currentUserProfile?.name || 'Sistema',
+                toId: taskInput.assigneeId,
+                toName: collaborators.find(c => c.id === taskInput.assigneeId)?.name || 'Responsável',
+                date: now
+              }]
             });
           }
         });
       });
+
+      if (!authUser?.id) {
+        alert('Erro de sessão: Usuário não autenticado. Por favor, faça login novamente.');
+        return;
+      }
 
       const { data, error } = await db.insert('tasks', tasksToAdd);
 
       console.log('Resultado da inserção:', { data, error, tasksToAdd });
 
       if (error) {
-        console.error('Erro ao criar tarefas:', error);
-        alert('Erro ao criar tarefas. Verifique o console para detalhes.');
+        console.error('Erro detalhado ao criar tarefas:', error);
+        alert(`Erro ao criar tarefas: ${error.message || 'Erro desconhecido'}. Verifique o console para mais detalhes.`);
         return;
       }
 
@@ -605,9 +679,124 @@ const App: React.FC = () => {
         const newTasks = data.map(mapTaskFromDB);
         console.log('Tarefas criadas com sucesso:', newTasks);
         setTasks(prev => [...newTasks, ...prev]);
+        newTasks.forEach(nt => handleAddLog('criou', 'tarefa', nt.id, nt.title));
       }
     }
     setIsCreateModalOpen(false);
+  };
+
+  const handleTransferTask = async (taskId: string, targetId: string, itemIndices: number[], transferData: any, mode: string) => {
+    const originalTask = tasks.find(t => t.id === taskId);
+    if (!originalTask || !currentUserProfile) return;
+
+    let receptor;
+    let receptorId = '';
+    let receptorName = '';
+
+    if (targetId.startsWith('team:')) {
+      const targetTeam = targetId.replace('team:', '');
+      // Busca o Gestor da equipe selecionada (Receptor)
+      const teamGestor = collaborators.find(c =>
+        c.role === targetTeam && (c.accessLevel === 'gestor' || c.accessLevel === 'admin')
+      );
+
+      // Se não achar um gestor, pega qualquer pessoa da equipe (como fallback)
+      receptor = teamGestor || collaborators.find(c => c.role === targetTeam);
+
+      if (!receptor) {
+        alert(`Não foi possível encontrar um responsável para a equipe ${targetTeam}.`);
+        return;
+      }
+      receptorId = receptor.id;
+      receptorName = `${receptor.name} (Gestor ${targetTeam})`;
+    } else {
+      // Transferência Direta para Indivíduo (Delegação/Devolução)
+      receptor = collaborators.find(c => c.id === targetId);
+      if (!receptor) return;
+      receptorId = receptor.id;
+      receptorName = receptor.name;
+    }
+
+    const itemsToTransfer = (originalTask.checklist || []).filter((_, idx) => itemIndices.includes(idx));
+    const itemsToKeep = (originalTask.checklist || []).filter((_, idx) => !itemIndices.includes(idx));
+
+    // Mapear o label do modo para o tipo do banco
+    const historyType: any = mode === 'squad' ? 'transferencia' : mode === 'delegar' ? 'delegacao' : 'devolucao';
+
+    const transferHistoryEntry = {
+      type: historyType,
+      fromId: originalTask.assigneeId,
+      fromName: collaborators.find(c => c.id === originalTask.assigneeId)?.name || 'Sistema',
+      toId: receptorId,
+      toName: receptorName,
+      date: new Date().toISOString(),
+      deadline: transferData.deadline,
+      projectName: transferData.projectName
+    };
+
+    // Se transferir TUDO, a tarefa original apenas muda de dono (conforme Opção A anterior)
+    if (itemsToKeep.length === 0) {
+      const updatedHistory = [...(originalTask.transferHistory || []), transferHistoryEntry];
+      const updatedChecklist = [
+        ...originalTask.checklist!,
+        { title: `[TRANSFERÊNCIA] De: ${transferHistoryEntry.fromName} Para: ${transferHistoryEntry.toName}`, completed: true, completedBy: originalTask.assigneeId, completedByName: transferHistoryEntry.fromName },
+        { title: `Validar recebimento da demanda`, completed: false }
+      ];
+      await handleUpdateTask(taskId, {
+        assigneeId: receptorId,
+        checklist: updatedChecklist,
+        transferHistory: updatedHistory,
+        dueDate: transferData.deadline
+      });
+    } else {
+      // Transferência PARCIAL: Cria uma nova tarefa e atualiza a original
+
+      // 1. Criar a nova tarefa do receptor
+      const newTask: any = {
+        title: `[TRANSFERIDO] ${transferData.projectName}`,
+        description: `Parte da demanda split de: ${originalTask.title}\n\nOrigem: ${transferHistoryEntry.fromName}`,
+        status: TaskStatus.PENDING,
+        priority: originalTask.priority,
+        due_date: transferData.deadline,
+        assignee_id: receptorId,
+        company_id: originalTask.companyId,
+        creator_id: authUser?.id,
+        checklist: [
+          { title: `[TRANSFERÊNCIA] Origem: ${originalTask.title}`, completed: true, completedBy: originalTask.assigneeId, completedByName: transferHistoryEntry.fromName },
+          ...itemsToTransfer,
+          { title: `Validar recebimento da demanda`, completed: false }
+        ],
+        transfer_history: [...(originalTask.transferHistory || []), transferHistoryEntry],
+        is_replicated: false
+      };
+
+      const { data, error } = await db.insert('tasks', newTask);
+      if (error) {
+        alert(`Erro ao criar tarefa do receptor: ${error.message}`);
+        return;
+      }
+
+      if (data) {
+        const mappedNewTask = mapTaskFromDB(data[0]);
+        setTasks(prev => [mappedNewTask, ...prev]);
+
+        // 2. Atualizar a tarefa original (remover itens transferidos)
+        const updatedOriginalChecklist = [
+          ...itemsToKeep,
+          { title: `[SPLIT] ${itemsToTransfer.length} itens transferidos para ${receptor.name}`, completed: true, completedBy: originalTask.assigneeId, completedByName: transferHistoryEntry.fromName }
+        ];
+
+        const updatedOriginalHistory = [
+          ...(originalTask.transferHistory || []),
+          { ...transferHistoryEntry, projectName: `Split: ${itemsToTransfer.length} itens movidos` }
+        ];
+
+        await handleUpdateTask(taskId, {
+          checklist: updatedOriginalChecklist,
+          transferHistory: updatedOriginalHistory
+        });
+      }
+    }
   };
 
   const handleDeleteTask = (taskId: string) => setDeleteConfirmation({ isOpen: true, type: 'task', id: taskId });
@@ -624,6 +813,7 @@ const App: React.FC = () => {
       ({ error } = await db.delete('tasks', id));
       if (!error) {
         setTasks(prev => prev.filter(t => t.id !== id));
+        handleAddLog('excluiu', 'tarefa', id, id);
       } else {
         console.error('Error deleting task:', error);
         alert('Erro ao excluir tarefa no banco de dados.');
@@ -633,6 +823,7 @@ const App: React.FC = () => {
       if (!error) {
         setCompanies(prev => prev.filter(c => c.id !== id));
         setTasks(prev => prev.filter(t => t.companyId !== id));
+        handleAddLog('excluiu', 'empresa', id, id);
       } else {
         console.error('Error deleting company:', error);
         alert('Erro ao excluir empresa no banco de dados.');
@@ -641,6 +832,7 @@ const App: React.FC = () => {
       ({ error } = await db.delete('profiles', id));
       if (!error) {
         setCollaborators(prev => prev.filter(c => c.id !== id));
+        handleAddLog('removeu membro', 'colaborador', id, id);
       } else {
         console.error('Error deleting collaborator:', error);
         alert('Erro ao remover colaborador no banco de dados.');
@@ -649,6 +841,7 @@ const App: React.FC = () => {
       const { error: teamError } = await db.from('teams').delete().eq('name', id);
       if (!teamError) {
         setTeams(prev => prev.filter(t => t !== id));
+        handleAddLog('excluiu', 'equipe', id, id);
       } else {
         console.error('Error deleting team:', teamError);
         alert('Erro ao excluir equipe no banco de dados.');
@@ -668,6 +861,7 @@ const App: React.FC = () => {
     });
     if (!error && data) {
       setCompanies(prev => [...prev, mapCompanyFromDB(data[0])]);
+      handleAddLog('criou', 'empresa', data[0].id, name);
     }
   };
 
@@ -696,6 +890,7 @@ const App: React.FC = () => {
     const { error } = await db.update('profiles', id, { full_name: name, role, is_manager: isManager, access_level: accessLevel });
     if (!error) {
       setCollaborators(prev => prev.map(c => c.id === id ? { ...c, name, role, isManager, accessLevel } : c));
+      handleAddLog('editou perfil de', 'colaborador', id, name);
     } else {
       console.error('Error updating profile:', error);
       alert('Erro ao atualizar perfil no banco de dados.');
@@ -707,6 +902,7 @@ const App: React.FC = () => {
       const { data, error } = await db.insert('teams', { name: teamName });
       if (!error) {
         setTeams(prev => [...prev, teamName]);
+        handleAddLog('criou', 'equipe', teamName, teamName);
       } else {
         console.error('Error adding team to DB:', error);
         alert(`Erro ao salvar equipe no banco: ${error.message}`);
@@ -1135,6 +1331,7 @@ const App: React.FC = () => {
                     onViewTask={handleViewTask}
                     onToggleChecklistItem={handleToggleChecklistItem}
                     isManager={currentUserProfile?.accessLevel === 'admin' || currentUserProfile?.accessLevel === 'gestor'}
+                    isAdmin={currentUserProfile?.accessLevel === 'admin'}
                     onOpenCreateModal={handleOpenCreateModal}
                   />
                 )}
@@ -1194,6 +1391,7 @@ const App: React.FC = () => {
                     onImportData={handleImportData}
                     onUpdatePassword={handleUpdatePassword}
                     onAdminResetPassword={handleAdminResetPassword}
+                    activityLogs={activityLogs}
                   />
                 )}
                 {activeTab === Tab.FAQ && (
@@ -1245,10 +1443,18 @@ const App: React.FC = () => {
         onToggleActivity={handleToggleChecklistItem}
         onUpdateNotes={handleUpdateNotes}
         onUpdateTask={handleUpdateTask}
+        onTransferTask={handleTransferTask}
         collaborators={collaborators}
         companies={companies}
-        currentUserId={currentUser.id}
-        isManager={currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor'}
+        teams={teams}
+        currentUserId={currentUserProfile?.id}
+        isManager={currentUserProfile?.accessLevel === 'admin' || currentUserProfile?.accessLevel === 'gestor'}
+        onEdit={() => {
+          if (viewingTask) {
+            setViewingTask(null);
+            handleOpenEditModal(viewingTask);
+          }
+        }}
       />
 
       <ReminderNotificationModal

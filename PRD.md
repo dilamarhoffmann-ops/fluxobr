@@ -1,61 +1,71 @@
 # Product Requirements Document (PRD) - FluxoBR Dashboard
 
 ## 1. Visão Geral do Produto
-O **FluxoBR Dashboard** é uma plataforma de gestão de tarefas e colaboração de equipes focada em agilidade e organização. O sistema permite que gestores e colaboradores acompanhem o fluxo de trabalho, gerenciem prazos, organizem checklists e mantenham uma base de conhecimento centralizada (FAQ). A aplicação é construída com tecnologias modernas de web (React, Vite, Supabase) e oferece uma interface responsiva e segura.
+O **FluxoBR Dashboard** é um ecossistema inteligente de gestão de demandas e produtividade operacional. Projetado para squads de alta performance, o sistema combina a agilidade do método Kanban com o rigor de checklists mandatórios e um histórico auditável (Linha do Tempo), garantindo que nenhuma informação se perca entre as transferências de responsabilidade.
 
-## 2. Objetivos do Produto
-*   Centralizar a gestão de tarefas operacionais e estratégicas.
-*   Melhorar a visibilidade do progresso das atividades por equipe e empresa.
-*   Facilitar a integração de novos membros através de FAQs e processos padronizados.
-*   Fornecer insights baseados em dados para tomada de decisão.
-*   Garantir a segurança dos dados através de controle de acesso granular.
+## 2. Objetivos Estratégicos
+*   **Transparência Radical:** Visibilidade total de quem fez o quê, quando e onde (Linha do Tempo).
+*   **Operação à Prova de Falhas:** Bloqueios de segurança para prazos retroativos e horários não comerciais.
+*   **Descentralização Assistida:** Permitir que colaboradores devolvam ou transfiram demandas com rastreabilidade total.
+*   **Base de Conhecimento Ativa:** FAQ integrado para reduzir gargalos de dúvida operacional.
+*   **Auditoria de Performance:** Relatórios executivos e métricas de tempo real.
 
-## 3. Público Alvo
-*   **Administradores:** Gerenciam todo o sistema, usuários, empresas e configurações globais.
-*   **Gestores:** Supervisionam equipes, validam tarefas (revisão), criam templates e gerenciam o fluxo de trabalho.
-*   **Colaboradores:** Executam tarefas, atualizam status e colaboram nas atividades diárias.
+## 3. Arquitetura de Perfis e Permissões (RBAC)
+O sistema opera em três níveis de acesso distintos:
+1.  **Administrador:** Acesso total, gerenciamento de usuários, whitelist de e-mails, reset de senhas e gestão global de empresas/equipes.
+2.  **Gestor:** Focado na supervisão do seu Squad. Pode validar conclusões, arquivar tarefas, gerenciar templates de processos e visualizar métricas da equipe.
+3.  **Colaborador:** Focado na execução. Visualiza o Kanban da equipe, executa checklists, anexa evidências e pode devolver demandas se necessário.
 
-## 4. Funcionalidades Principais
+## 4. Funcionalidades Detalhadas
 
-### 4.1. Gestão de Tarefas (Kanban & Agenda)
-*   **Criação e Edição:** Tarefas com título, descrição, prioridade, data de entrega, responsável, empresa vinculada e checklists.
-*   **Checklists Mandatórios:** O status da tarefa evolui automaticamente:
-    *   **Pendente:** Estado inicial.
-    *   **Em Andamento:** Ativado ao marcar o primeiro item do checklist.
-    *   **Em Revisão:** Ativado automaticamente ao concluir 100% do checklist.
-*   **Agendamento Comercial Restrito:** Regras rígidas de prazo (08:00 às 18:00 em intervalos de 15 min).
-*   **Observações do Responsável:** Campo de texto editável pelo Responsável, Criador e Gestores/Admins.
-*   **Status Workflow:** Pendente, Em Andamento, Em Revisão, Concluído (gestor/admin), Arquivado (gestor/admin).
-*   **Interface:** Exibição do nome do responsável diretamente nos cards para fácil identificação.
+### 4.1. Gestão de Demandas (Core)
+*   **Identidade Única:** Cada tarefa recebe um ID alfanumérico curto (Ex: #A1B2) visível em todas as telas para facilitar a comunicação.
+*   **Kanban Dinâmico:** Organização visual em 5 estágios: Pendente, Em Andamento, Em Revisão, Concluído e Arquivado.
+*   **Checklist Inteligente:**
+    *   O status muda para **"Em Andamento"** ao marcar o primeiro item.
+    *   O status muda para **"Em Revisão"** ao completar 100% dos itens.
+*   **Anexos e Evidências:** Suporte a Imagens e PDFs com visualizador integrado (modal) para conferência rápida de documentos.
+*   **Observações do Responsável:** Campo de notas rico para registro de nuances da execução, editável pelos envolvidos.
 
-### 4.2. Gestão de Equipes e Empresas
-*   **Portfólio por Squad:** Empresas vinculadas a times específicos.
-*   **Controle de Acesso (RBAC):**
-    *   **Admin:** Visão global.
-    *   **Gestor:** Focado no seu Squad e empresas vinculadas.
-    *   **Colaborador:** Focado em suas tarefas e tarefas replicadas da equipe.
+### 4.2. Fluxo de Transferência e Devolução (Premium)
+*   **Transferência para Squad:** Movimentação de demandas entre diferentes áreas da empresa.
+*   **Delegação Interna:** Gestores podem atribuir tarefas ou partes delas a membros específicos.
+*   **Devolução Inteligente:** Colaboradores podem retornar uma tarefa para qualquer pessoa que tenha participado do fluxo (Criador ou Transferidores anteriores).
+*   **Split de Demanda (Divisão):** Possibilidade de transferir apenas itens selecionados de um checklist, gerando uma nova tarefa vinculada para o receptor enquanto mantém o restante com o emissor.
 
-### 4.3. Sistema de Notificações Inteligente
-*   **E-mails via Resend:** Disparos automáticos para tarefas vencidas.
-*   **Escalonamento:** Re-notificação configurada para 3, 7, 14 e 30 dias de atraso.
-*   **Auditoria:** Registro detalhado de disparos na tabela `notification_logs`.
+### 4.3. Linha do Tempo (Audit Trail)
+Histórico cronológico visual no detalhe de cada tarefa, registrando com precisão:
+*   **Criação (Verde):** Quem abriu e para quem foi designada.
+*   **Transferência (Âmbar):** Movimentações entre equipes.
+*   **Delegação (Índigo):** Atribuições diretas de gestão.
+*   **Devolução (Rosa):** Retorno da demanda por impossibilidade ou erro.
+*   **Finalização (Ciano):** Registro de quem deu o "check" final.
+*   *Nota: Todos os eventos registram Data, Hora e, se aplicável, o novo prazo definido.*
 
-### 4.4. Administração e Segurança
-*   **Reset de Senha:** Redefinição administrativa para "123mudar" com troca obrigatória.
-*   **Whitelist:** Controle de registro por e-mail autorizado.
+### 4.4. Agenda e Planejamento
+*   **Calendário Mensal:** Visão macro das entregas do mês com indicadores de status por cor.
+*   **Visualização Diária:** Detalhamento de compromissos ao clicar em uma data específica.
+*   **Tarefas Recorrentes:** Automação de tarefas diárias, semanais ou mensais (Ex: Fechamentos de caixa, backups).
+*   **Lembretes:** Sistema de notificações internas para alertas pontuais com hora marcada.
 
-## 5. Arquitetura Técnica
-*   **Frontend:** React 19, Vite, TypeScript, Tailwind CSS.
-*   **Backend:** Supabase (Auth, DB, Storage, Edge Functions).
-*   **Integrações:** Resend (E-mail), Gemini AI (Inteligência de base de dados).
+### 4.5. Inteligência e Relatórios
+*   **Dashboard de Métricas:** Contador de tarefas Pendentes, Em Andamento, Atrasadas e Concluídas com gráficos de tendência.
+*   **Exportação Premium:** Geração de relatórios em **PDF** (layout executivo) e **CSV** (para análise em Excel/BI).
+*   **FAQ (Base de Conhecimento):** Gestão de perguntas frequentes categorizadas para auxiliar na padronização de processos.
 
-## 6. Fluxos Relevantes
-1.  **Validação de Prazo:** Sistema bloqueia agendamentos fora do horário comercial.
-2.  **Automação de Status:** Checklist conduz o ciclo de vida da tarefa.
-3.  **Gestão de Feedback:** Campo de observações centraliza a comunicação sobre a tarefa.
+## 5. Regras de Negócio e Segurança
+*   **Trava Temporal:** O sistema impede a criação ou transferência de tarefas para datas passadas ou horários inferiores ao atual.
+*   **Horário Comercial:** Agendamentos restritos ao intervalo das 08h às 18h, com intervalos de 15 minutos.
+*   **Autenticação Segura:** Login via Supabase Auth com política de troca de senha obrigatória no primeiro acesso (reset administrativo).
+*   **Whitelist de Acesso:** Apenas e-mails previamente autorizados na base podem criar conta.
+*   **Isolamento de Dados:** Usuários só visualizam dados pertinentes ao seu Squad ou demandas em que foram citados.
 
-## 7. Roadmap Futuro
-*   **Relatórios em PDF:** Dashboards de exportação.
-*   **Notificações Webhook:** Integração com apps de chat.
-*   **Dashboard Executivo:** Comparativo de produtividade entre times.
+## 6. Stack Tecnológica
+*   **Frontend:** React 19 (Hooks Context API), Vite, TypeScript.
+*   **Estilização:** Tailwind CSS (Modern Glassmorphism Design).
+*   **Backend as a Service:** Supabase (PostgreSQL, Auth, Storage).
+*   **Comunicação:** Resend API (Notificações por E-mail).
+*   **AI:** Google Gemini SDK (Geração de Insights).
 
+---
+*Última atualização: 26 de Janeiro de 2026*
