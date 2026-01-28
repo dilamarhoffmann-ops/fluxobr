@@ -110,8 +110,8 @@ export const Settings: React.FC<SettingsProps> = (props) => {
           <SettingsTab active={activeTab === 'perfil'} label="Meu Perfil" icon={<User className="w-4 h-4" />} onClick={() => setActiveTab('perfil')} />
           {(currentUser.accessLevel === 'admin' || currentUser.accessLevel === 'gestor') && (
             <>
-              <SettingsTab active={activeTab === 'membros'} label="Membros" icon={<Users className="w-4 h-4" />} onClick={() => setActiveTab('membros')} />
               <SettingsTab active={activeTab === 'equipes'} label="Equipes" icon={<Database className="w-4 h-4" />} onClick={() => setActiveTab('equipes')} />
+              <SettingsTab active={activeTab === 'membros'} label="Membros" icon={<Users className="w-4 h-4" />} onClick={() => setActiveTab('membros')} />
               <SettingsTab active={activeTab === 'templates'} label="Modelos" icon={<Layers className="w-4 h-4" />} onClick={() => setActiveTab('templates')} />
               <SettingsTab active={activeTab === 'auditoria'} label="Auditoria" icon={<ShieldAlert className="w-4 h-4" />} onClick={() => setActiveTab('auditoria')} />
             </>

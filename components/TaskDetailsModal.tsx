@@ -303,32 +303,65 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                             <p className="text-[10px] text-slate-400 font-medium">Documento PDF ou Imagem</p>
                                         </div>
                                     </div>
-                                    {isImageFile(task.attachmentUrl) ? (
-                                        <button
-                                            type="button"
-                                            onClick={() => setPreviewUrl(task.attachmentUrl!)}
-                                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-xl border border-indigo-100 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all shadow-sm"
-                                        >
-                                            <ImageIcon className="w-3.5 h-3.5" />
-                                            Visualizar
-                                        </button>
-                                    ) : (
-                                        <a
-                                            href={task.attachmentUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-xl border border-indigo-100 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all shadow-sm"
-                                        >
-                                            <ExternalLink className="w-3.5 h-3.5" />
-                                            Visualizar
-                                        </a>
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        {isImageFile(task.attachmentUrl) ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => setPreviewUrl(task.attachmentUrl!)}
+                                                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-xl border border-indigo-100 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all shadow-sm"
+                                            >
+                                                <ImageIcon className="w-3.5 h-3.5" />
+                                                Visualizar
+                                            </button>
+                                        ) : (
+                                            <a
+                                                href={task.attachmentUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 text-xs font-bold rounded-xl border border-indigo-100 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 transition-all shadow-sm"
+                                            >
+                                                <ExternalLink className="w-3.5 h-3.5" />
+                                                Visualizar
+                                            </a>
+                                        )}
+                                        {canManageAttachments && (
+                                            <button
+                                                type="button"
+                                                onClick={async () => {
+                                                    if (!window.confirm("Tem certeza que deseja excluir o anexo?")) return;
+
+                                                    // Extrair nome do arquivo da URL se necessário, ou apenas limpar o campo no banco
+                                                    // No Supabase Storage, precisaríamos do path. Aqui vamos apenas desvincular da tarefa.
+                                                    // Se quiser deletar do Storage, precisaria parsear a URL.
+
+                                                    try {
+                                                        const fileName = task.attachmentUrl!.split('/').pop();
+                                                        if (fileName) {
+                                                            await storage.remove('task-attachments', [fileName]);
+                                                        }
+
+                                                        if (onUpdateTask) {
+                                                            await onUpdateTask(task.id, { attachmentUrl: null });
+                                                        } else {
+                                                            const { error: dbError } = await db.from('tasks').update({ attachment_url: null }).eq('id', task.id);
+                                                            if (dbError) throw dbError;
+                                                            window.location.reload();
+                                                        }
+                                                        alert("Anexo removido com sucesso!");
+                                                    } catch (err) {
+                                                        console.error("Erro ao remover anexo:", err);
+                                                        alert("Erro ao remover anexo.");
+                                                    }
+                                                }}
+                                                className="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl border border-red-100 dark:border-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/20 transition-all shadow-sm"
+                                                title="Excluir Anexo"
+                                            >
+                                                <X className="w-3.5 h-3.5" />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                            ) : (
-                                <div className="text-center py-6 bg-slate-50 dark:bg-slate-800/20 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                                    <p className="text-[11px] font-medium text-slate-400">Nenhum arquivo anexado a esta tarefa.</p>
-                                </div>
-                            )}
+                            ) : null}
                         </div>
 
                         {/* Checklist as Tasks */}
@@ -379,12 +412,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                         );
                                     })}
                                 </div>
-                            ) : (
-                                <div className="text-center py-12 bg-slate-50 dark:bg-slate-800/20 rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-                                    <CheckCircle2 className="w-10 h-10 text-slate-300 mx-auto mb-4" />
-                                    <h5 className="text-sm font-bold text-slate-700 dark:text-slate-300">Nenhuma tarefa listada no checklist.</h5>
-                                </div>
-                            )}
+                            ) : null}
                         </div>
 
                         {/* Observações / Resposta Section */}
