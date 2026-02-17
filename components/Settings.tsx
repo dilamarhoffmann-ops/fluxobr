@@ -6,6 +6,7 @@ import {
 import { Collaborator, ActivityLog } from '../types';
 import { Avatar } from './ui/Avatar';
 import { SettingsTab } from './SettingsTab';
+import { ConfirmationModal } from './ui/ConfirmationModal';
 
 interface SettingsProps {
   isManager: boolean;
@@ -67,6 +68,20 @@ export const Settings: React.FC<SettingsProps> = (props) => {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTeamName, setNewTeamName] = useState('');
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+
+  // States para o Modal de Confirmação
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [confirmModalConfig, setConfirmModalConfig] = useState<{
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    variant: 'warning' | 'danger' | 'info';
+  }>({
+    title: '',
+    message: '',
+    onConfirm: () => { },
+    variant: 'warning'
+  });
 
   const resetForm = () => {
     setNewCollabName(''); setNewCollabRole(''); setNewCollabEmail('');
@@ -182,117 +197,187 @@ export const Settings: React.FC<SettingsProps> = (props) => {
           {/* SEÇÃO: MEMBROS */}
           {activeTab === 'membros' && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Gestão de Colaboradores</h3>
+              <div className="flex items-center justify-between mb-8 px-2">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-xl font-black text-slate-800 dark:text-white tracking-tight uppercase">Usuários do Sistema</h3>
+                  <div className="bg-indigo-50 dark:bg-indigo-900/30 px-5 py-2 rounded-full border border-indigo-100 dark:border-indigo-800">
+                    <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-[0.2em]">{collaborators.length} Usuários Detectados</span>
+                  </div>
+                </div>
                 <button
                   onClick={() => setEditingCollabId('new')}
-                  className="btn-premium"
+                  className="btn-premium flex items-center gap-2 group"
                 >
-                  <Plus className="w-4 h-4" /> Novo Membro
+                  <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" /> Novo Membro
                 </button>
               </div>
 
               {(editingCollabId === 'new' || (editingCollabId && editingCollabId !== 'new')) && (
-                <div className="p-6 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/50 rounded-2xl space-y-6">
+                <div className="p-8 bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100 dark:border-indigo-800/50 rounded-3xl space-y-6 mb-8 animate-in zoom-in-95 duration-300">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-indigo-900 dark:text-indigo-300">{editingCollabId === 'new' ? 'Adicionar Novo' : 'Editar Membro'}</h4>
-                    <button onClick={resetForm} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X className="w-4 h-4" /></button>
+                    <h4 className="text-sm font-black text-indigo-900 dark:text-indigo-300 uppercase underline decoration-indigo-500/30 underline-offset-8 decoration-2">{editingCollabId === 'new' ? 'Adicionar Novo Usuário' : 'Editar Perfil de Membro'}</h4>
+                    <button onClick={resetForm} className="w-8 h-8 rounded-full bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors"><X className="w-4 h-4" /></button>
                   </div>
-                  <form onSubmit={handleCollaboratorSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <form onSubmit={handleCollaboratorSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Nome Full</label>
-                      <input type="text" className="w-full text-sm px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" value={newCollabName} onChange={e => setNewCollabName(e.target.value)} required />
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">Nome Completo</label>
+                      <input type="text" className="w-full text-sm px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white transition-all shadow-sm" value={newCollabName} onChange={e => setNewCollabName(e.target.value)} required />
                     </div>
                     {editingCollabId === 'new' && (
                       <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">E-mail</label>
-                        <input type="email" className="w-full text-sm px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" value={newCollabEmail} onChange={e => setNewCollabEmail(e.target.value)} required />
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">E-mail Corporativo</label>
+                        <input type="email" className="w-full text-sm px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white transition-all shadow-sm" value={newCollabEmail} onChange={e => setNewCollabEmail(e.target.value)} required />
                       </div>
                     )}
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Equipe / Squad</label>
-                      <select className="w-full text-sm px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" value={newCollabRole} onChange={e => setNewCollabRole(e.target.value)} required>
-                        <option value="">Selecione...</option>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">Equipe / Squad</label>
+                      <select className="w-full text-sm px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white font-bold transition-all shadow-sm" value={newCollabRole} onChange={e => setNewCollabRole(e.target.value)} required>
+                        <option value="">Selecione a Equipe...</option>
                         {teams?.map((t, i) => <option key={i} value={t}>{t}</option>)}
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Nível de Acesso</label>
-                      <select className="w-full text-sm px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 font-bold dark:text-white" value={newCollabAccessLevel} onChange={e => setNewCollabAccessLevel(e.target.value)}>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">Nível de Acesso</label>
+                      <select className="w-full text-sm px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 font-bold dark:text-white shadow-sm" value={newCollabAccessLevel} onChange={e => setNewCollabAccessLevel(e.target.value)}>
                         <option value="colaborador">Colaborador</option>
                         <option value="gestor">Gestor</option>
                         <option value="admin">Administrador</option>
                       </select>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Área / Departamento</label>
-                      <input type="text" className="w-full text-sm px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" value={newCollabArea} onChange={e => setNewCollabArea(e.target.value)} placeholder="Ex: Financeiro" />
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">Área / Departamento</label>
+                      <input type="text" className="w-full text-sm px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white shadow-sm" value={newCollabArea} onChange={e => setNewCollabArea(e.target.value)} placeholder="Ex: Financeiro" />
                     </div>
-                    <div className="flex items-center gap-3 pt-4">
+                    <div className="flex items-center gap-3 pt-6">
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input type="checkbox" className="sr-only peer" checked={newCollabAllowed} onChange={e => setNewCollabAllowed(e.target.checked)} />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
-                        <span className="ml-3 text-sm font-bold text-slate-500 dark:text-slate-400">Acesso Liberado</span>
+                        <div className="w-12 h-6.5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500 shadow-inner"></div>
+                        <span className="ml-3 text-sm font-bold text-slate-500 dark:text-slate-400 tracking-tight">Autorizar acesso imediato</span>
                       </label>
                     </div>
-                    <div className="md:col-span-2 flex justify-end gap-3 mt-2">
+                    <div className="md:col-span-2 flex justify-end gap-3 mt-6 border-t border-indigo-100 dark:border-indigo-900/50 pt-6">
                       {editingCollabId !== 'new' && editingCollabId !== currentUser.id && (
-                        <button type="button" onClick={() => onAdminResetPassword(editingCollabId!)} className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold rounded-xl hover:bg-amber-200 border border-amber-200 dark:border-amber-800">Resetar Senha para "123mudar"</button>
+                        <button type="button" onClick={() => {
+                          setConfirmModalConfig({
+                            title: "Resetar Segurança",
+                            message: `Deseja realmente resetar a senha deste usuário para "123mudar"? Ele será solicitado a criar uma nova senha no próximo acesso.`,
+                            onConfirm: () => onAdminResetPassword(editingCollabId!),
+                            variant: 'warning'
+                          });
+                          setIsConfirmModalOpen(true);
+                        }} className="px-5 py-2.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-amber-100 border border-amber-200 dark:border-amber-800 transition-all shadow-sm">Resetar Segurança</button>
                       )}
-                      <button type="submit" className="btn-premium px-8">Salvar Dados</button>
+                      <button type="submit" className="btn-premium px-10 shadow-indigo-200 dark:shadow-none">Salvar Alterações</button>
                     </div>
                   </form>
                 </div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {collaborators.map(collab => (
-                  <div key={collab.id} className={`group p-4 bg-white dark:bg-slate-800/40 border ${collab.allowed === false ? 'border-amber-200 bg-amber-50/10 dark:border-amber-900/30' : 'border-slate-100 dark:border-slate-700/50'} rounded-2xl flex items-center justify-between hover:border-indigo-200 dark:hover:border-indigo-700 hover:shadow-lg hover:shadow-slate-100 dark:hover:shadow-none transition-all`}>
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <Avatar name={collab.name} src={collab.avatar} size="md" />
-                        <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-800 ${collab.allowed === false ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
+              <div className="bg-white/40 dark:bg-slate-900/40 rounded-[2.5rem] border border-white/20 dark:border-slate-800 overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
+                {/* Header da Tabela conforme modelo */}
+                <div className="grid grid-cols-[2fr_1.2fr_1fr_1fr_0.8fr] gap-4 px-10 py-5 bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 items-center">
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Identificação</div>
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Departamento</div>
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Nível</div>
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Status</div>
+                  <div className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Ações</div>
+                </div>
+
+                {/* Linhas da Tabela */}
+                <div className="divide-y divide-slate-50 dark:divide-slate-800">
+                  {collaborators.map(collab => (
+                    <div key={collab.id} className="grid grid-cols-[2fr_1.2fr_1fr_1fr_0.8fr] gap-4 px-10 py-6 items-center hover:bg-slate-50/30 dark:hover:bg-slate-800/30 transition-all group">
+                      {/* Identificação */}
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <Avatar name={collab.name} src={collab.avatar} size="md" className="ring-4 ring-white dark:ring-slate-900 shadow-sm" />
+                          <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-800 ${collab.allowed === false ? 'bg-amber-400' : 'bg-emerald-500'} shadow-sm`}></div>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-black text-slate-800 dark:text-white truncate uppercase tracking-tight">{collab.name}</p>
+                          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 truncate uppercase tracking-tighter">{collab.email}</p>
+                        </div>
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-bold text-slate-900 dark:text-white">{collab.name}</p>
-                          {collab.allowed === false && (
-                            <span className="text-[9px] font-black bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded uppercase tracking-wider">Acesso em Análise</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">{collab.role}</span>
-                          <div className="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">{collab.area || 'Sem área'}</span>
-                          <div className="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
-                          {getLevelBadge(collab.accessLevel)}
-                        </div>
+
+                      {/* Departamento */}
+                      <div className="text-center">
+                        <span className="text-[10px] font-black text-slate-800 dark:text-white tracking-widest uppercase bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                          {collab.area || 'N/A'}
+                        </span>
+                      </div>
+
+                      {/* Nível */}
+                      <div className="flex justify-center">
+                        <span className={`text-[9px] font-black px-4 py-2 rounded-full border shadow-sm uppercase tracking-[0.15em] ${collab.accessLevel === 'admin' ? 'bg-rose-50 text-rose-600 border-rose-100' :
+                          collab.accessLevel === 'gestor' ? 'bg-amber-50 text-amber-600 border-amber-100' :
+                            'bg-indigo-50 text-indigo-600 border-indigo-100'
+                          }`}>
+                          {collab.accessLevel || 'Colaborador'}
+                        </span>
+                      </div>
+
+                      {/* Status */}
+                      <div className="flex justify-center">
+                        <span className={`text-[9px] font-black px-4 py-2 rounded-full border shadow-sm uppercase tracking-[0.15em] flex items-center gap-2 ${collab.allowed === false ? 'bg-amber-50 text-amber-500 border-amber-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                          }`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${collab.allowed === false ? 'bg-amber-400 animator-pulse' : 'bg-emerald-500'}`} />
+                          {collab.allowed === false ? 'Pendente' : 'Autorizado'}
+                        </span>
+                      </div>
+
+                      {/* Ações */}
+                      <div className="flex items-center justify-end gap-2 pr-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        {currentUser.accessLevel === 'admin' && collab.id !== currentUser.id && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmModalConfig({
+                                title: "Remover Membro",
+                                message: `Tem certeza que deseja remover o acesso de ${collab.name}? Esta ação não pode ser desfeita.`,
+                                onConfirm: () => onDeleteCollaborator(collab.id),
+                                variant: 'danger'
+                              });
+                              setIsConfirmModalOpen(true);
+                            }}
+                            className="w-8 h-8 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center hover:bg-rose-500 hover:text-white transition-all transform active:scale-90 border border-rose-100 shadow-sm"
+                            title="Bloquear/Excluir"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            setEditingCollabId(collab.id); setNewCollabName(collab.name); setNewCollabRole(collab.role);
+                            setNewCollabAccessLevel(collab.accessLevel || 'colaborador'); setNewCollabAllowed(collab.allowed !== false);
+                            setNewCollabArea(collab.area || '');
+                          }}
+                          className="w-10 h-10 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/20 hover:bg-amber-600 transition-all transform active:scale-90 hover:rotate-6"
+                          title="Editar"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        {currentUser.accessLevel === 'admin' && collab.id !== currentUser.id && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmModalConfig({
+                                title: "Resetar Senha",
+                                message: `Deseja realmente resetar a senha de ${collab.name} para "123mudar"?`,
+                                onConfirm: () => onAdminResetPassword(collab.id),
+                                variant: 'warning'
+                              });
+                              setIsConfirmModalOpen(true);
+                            }}
+                            className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-all transform active:scale-95 border border-slate-200 shadow-sm"
+                            title="Resetar"
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => {
-                        setEditingCollabId(collab.id);
-                        setNewCollabName(collab.name);
-                        setNewCollabRole(collab.role);
-                        setNewCollabAccessLevel(collab.accessLevel || 'colaborador');
-                        setNewCollabAllowed(collab.allowed !== false);
-                        setNewCollabArea(collab.area || '');
-                      }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors" title="Editar Perfil"><Edit2 className="w-4 h-4" /></button>
-
-                      {currentUser.accessLevel === 'admin' && collab.id !== currentUser.id && (
-                        <button onClick={() => {
-                          if (confirm(`Tem certeza que deseja resetar a senha de ${collab.name}? O usuário terá que definir uma nova senha no próximo acesso.`)) {
-                            onAdminResetPassword(collab.id);
-                          }
-                        }} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-lg transition-colors" title="Resetar Segurança"><Lock className="w-4 h-4" /></button>
-                      )}
-
-                      {currentUser.accessLevel === 'admin' && collab.id !== currentUser.id && (
-                        <button onClick={() => onDeleteCollaborator(collab.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" title="Remover Membro"><Trash2 className="w-4 h-4" /></button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
 
               {authorizedEmails.length > 0 && (
@@ -525,6 +610,16 @@ export const Settings: React.FC<SettingsProps> = (props) => {
           )}
         </div>
       </div >
+      <ConfirmationModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={confirmModalConfig.onConfirm}
+        title={confirmModalConfig.title}
+        message={confirmModalConfig.message}
+        variant={confirmModalConfig.variant}
+        confirmLabel="Confirmar"
+        cancelLabel="Voltar"
+      />
     </div >
   );
 };
