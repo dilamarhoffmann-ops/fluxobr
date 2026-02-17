@@ -249,10 +249,10 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                       <input type="text" className="w-full text-sm px-5 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white shadow-sm" value={newCollabArea} onChange={e => setNewCollabArea(e.target.value)} placeholder="Ex: Financeiro" />
                     </div>
                     <div className="flex items-center gap-3 pt-6">
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label className="relative inline-flex items-center cursor-pointer group p-2 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-xl transition-all">
                         <input type="checkbox" className="sr-only peer" checked={newCollabAllowed} onChange={e => setNewCollabAllowed(e.target.checked)} />
-                        <div className="w-12 h-6.5 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500 shadow-inner"></div>
-                        <span className="ml-3 text-sm font-bold text-slate-500 dark:text-slate-400 tracking-tight">Autorizar acesso imediato</span>
+                        <div className="w-14 h-7 bg-slate-200 peer-focus:outline-none ring-offset-2 focus:ring-2 ring-indigo-500/20 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[calc(50%-10px)] after:left-[6px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:shadow-md after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500 shadow-inner transition-colors duration-300"></div>
+                        <span className="ml-3 text-sm font-bold text-slate-600 dark:text-slate-300 tracking-tight group-hover:text-slate-900 dark:group-hover:text-white transition-colors">Autorizar acesso imediato</span>
                       </label>
                     </div>
                     <div className="md:col-span-2 flex justify-end gap-3 mt-6 border-t border-indigo-100 dark:border-indigo-900/50 pt-6">
