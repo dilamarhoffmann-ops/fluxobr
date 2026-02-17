@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sync": "powershell -ExecutionPolicy Bypass -File ./sync.ps1"
   },
   "dependencies": {
     "@google/genai": "^1.34.0",
     "@supabase/supabase-js": "^2.90.1",
+    "dotenv": "^17.2.3",
     "framer-motion": "^12.25.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.0.0",
@@ -29,6 +31,7 @@
     "autoprefixer": "^10.4.23",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.21.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }

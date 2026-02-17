@@ -34,7 +34,7 @@ export const MenuVertical = ({
                 return (
                     <motion.div
                         key={`${item.href}-${index}`}
-                        className={`group/nav flex items-center ${isCollapsed ? 'justify-center' : 'gap-2'} cursor-pointer relative ${isCollapsed ? 'px-0 py-3 mx-2' : 'px-4 py-2'} rounded-xl transition-all duration-300 ${isActive ? 'bg-indigo-50/80 dark:bg-indigo-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
+                        className={`group/nav flex items-center ${isCollapsed ? 'justify-center' : 'gap-2'} cursor-pointer relative ${isCollapsed ? 'px-0 py-3 mx-2' : 'px-4 py-2'} rounded-xl transition-all duration-300 ${isActive ? 'bg-white/10 shadow-lg shadow-black/20' : 'hover:bg-white/5'}`}
                         initial="initial"
                         whileHover="hover"
                         animate={isActive ? "active" : "initial"}
@@ -60,28 +60,28 @@ export const MenuVertical = ({
                                 transition={{ duration: 0.3, ease: "easeOut" }}
                                 className="z-0"
                             >
-                                <ArrowRight strokeWidth={3} className="w-4 h-4" />
+                                <ArrowRight strokeWidth={3} className="w-4 h-4 opacity-70" />
                             </motion.div>
                         )}
 
                         <motion.div
                             variants={{
                                 initial: { x: isCollapsed ? 0 : -20, color: "inherit" },
-                                hover: { x: 0, color: color, skewX: skew },
-                                active: { x: 0, color: color, skewX: skew }
+                                hover: { x: 0, color: "white", skewX: skew },
+                                active: { x: 0, color: "white", skewX: skew }
                             }}
                             transition={{ duration: 0.3, ease: "easeOut" }}
-                            className={`font-bold text-sm uppercase tracking-wider no-underline ${isCollapsed ? 'flex justify-center' : ''}`}
+                            className={`font-bold text-sm uppercase tracking-widest no-underline ${isCollapsed ? 'flex justify-center' : ''}`}
                         >
                             <div className="flex items-center gap-3">
                                 <span
-                                    className="transition-colors duration-300"
-                                    style={{ color: isActive ? color : undefined }}
+                                    className="transition-all duration-300 drop-shadow-[0_0_8px_rgba(84,131,179,0.3)]"
+                                    style={{ color: isActive ? color : '#94a3b8' }}
                                 >
                                     {item.icon}
                                 </span>
                                 {!isCollapsed && (
-                                    <span className={`transition-colors duration-300 ${isActive ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 group-hover/nav:text-slate-900'}`}>
+                                    <span className={`transition-colors duration-300 ${isActive ? 'text-white' : 'text-slate-400 group-hover/nav:text-white'}`}>
                                         {item.label}
                                     </span>
                                 )}

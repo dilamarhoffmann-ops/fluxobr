@@ -13,11 +13,11 @@ interface DashboardChartsProps {
 }
 
 const COLORS = {
-  [TaskStatus.DONE]: '#06b6d4', // Cyan 500 (Updated from Emerald 500)
-  [TaskStatus.IN_PROGRESS]: '#3b82f6', // Blue 500
-  [TaskStatus.PENDING]: '#94a3b8', // Slate 400
-  [TaskStatus.ARCHIVED]: '#64748b', // Slate 500 (Replaced BLOCKED)
-  [TaskStatus.REVIEW]: '#f59e0b', // Amber 500
+  [TaskStatus.PENDING]: '#2563eb',   // bg-blue-600
+  [TaskStatus.IN_PROGRESS]: '#16a34a', // bg-green-600
+  [TaskStatus.REVIEW]: '#facc15',      // bg-yellow-400
+  [TaskStatus.DONE]: '#06b6d4',        // bg-cyan-500
+  [TaskStatus.ARCHIVED]: '#64748b',    // bg-slate-500
 };
 
 // Custom Tooltip to show details and percentage
@@ -88,8 +88,8 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ tasks, collabo
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         {/* Status Distribution */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-4 font-heading">Distribuição de Status</h3>
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl transition-all duration-300">
+          <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-6 uppercase tracking-[0.2em]">Distribuição de Status</h3>
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -114,8 +114,8 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ tasks, collabo
         </div>
 
         {/* Progress List - Companies & Members */}
-        <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6 font-heading">Performance do Time</h3>
+        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl transition-all duration-300">
+          <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-6 uppercase tracking-[0.2em]">Performance do Time</h3>
 
           <div className="space-y-8">
             {/* Progress per Company */}
@@ -168,8 +168,8 @@ export const DashboardCharts: React.FC<DashboardChartsProps> = ({ tasks, collabo
       </div>
 
       {/* Production Bar Chart (Full View of Workload) */}
-      <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700">
-        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-6 font-heading">Volume de Trabalho por Membro</h3>
+      <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-xl transition-all duration-300">
+        <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 mb-6 uppercase tracking-[0.2em]">Volume de Trabalho por Membro</h3>
         <div className="h-80 w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart

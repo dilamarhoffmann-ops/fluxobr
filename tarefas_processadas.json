@@ -1,0 +1,356 @@
+﻿{
+    "processedAt":  "2026-02-05T10:49:10",
+    "totalTasks":  50,
+    "tasks":  [
+                  {
+                      "number":  1,
+                      "title":  "AGENDAR BOLETOS DE COMBUSTIVEIS",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  2,
+                      "title":  "Entrar em portais diariamente e verificar se quantidade de boletos no DDA bate com quantidade de boletos em portal",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  3,
+                      "title":  "Pegar documentos no portal da companhia (nota e boleto) e anexar no DDA.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  4,
+                      "title":  "Preencher dados como N° da nota, setor e forma de pagamento e gerar pagamento",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  5,
+                      "title":  "IMPORTAR RETORNO",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  6,
+                      "title":  "Baixar arquivo e importar para sistema Petros.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  7,
+                      "title":  "DEPOSITO DE CHEQUES",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  8,
+                      "title":  "Gerar relatório em sistema e encaminhar ao posto.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  9,
+                      "title":  "Aguardar arquivo de cheques e autorizar deposito.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  10,
+                      "title":  "Conferir comprovante do banco.",
+                      "subtasks":  [
+                                       "LMC"
+                                   ]
+                  },
+                  {
+                      "number":  11,
+                      "title":  "Gerar medidas em sistema",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  12,
+                      "title":  "Preencher de acordo com a fita enviada diariamente pelo posto.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  13,
+                      "title":  "Confirmar LMC.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  14,
+                      "title":  "CONCILIAÇÃO DE CARTÕES",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  15,
+                      "title":  "Conciliar vendas do dia anterior com forma de recebimento.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  16,
+                      "title":  "CONCILIAÇÃO DE SANGRIA/COFRE",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  17,
+                      "title":  "Conferir em tela de sangria se todas os suprimentos e sangria as batendo.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  18,
+                      "title":  "Conferir se saldo de cofre em sistema está batendo com planilha enviada diariamente pelo posto.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  19,
+                      "title":  "Após conferencia, conciliar valores.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  20,
+                      "title":  "CONFERENCIA DE CAIXA",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  21,
+                      "title":  "Conferir documentos anexados em sistema Brapoio.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  22,
+                      "title":  "Conferir dados do caixa no sistema Petros com mapa de caixa anexado em Brapoio",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  23,
+                      "title":  "Ratear faltas em sobras em sistema Petros.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  24,
+                      "title":  "Confirmar o caixa.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  25,
+                      "title":  "CONCILIAÇÃO BANCÁRIA",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  26,
+                      "title":  "Importar extratos em formato OFX de todas as contas para sistema Petros.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  27,
+                      "title":  "Liquidar contas a receber",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  28,
+                      "title":  "Lançar despesas pagas",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  29,
+                      "title":  "Dar entrada em notas fiscais.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  30,
+                      "title":  "Lançar tarifas e débitos em contas/investimentos.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  31,
+                      "title":  "Conciliar toda a conta.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  32,
+                      "title":  "D2 (Conferencia de cartões frota em portais)",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  33,
+                      "title":  "Entrar em faturamento de cartões e filtrar por data do dia anterior",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  34,
+                      "title":  "Conferir todos os portais e verificar se todas as vendas/saques estão lançadas no valor correto e na adquirente correta.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  35,
+                      "title":  "ANEXAR NOTAS DE SAIDA EM PORTAIS",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  36,
+                      "title":  "Entrar em todos os portais diariamente e verificar se existem pedidos de notas em aberto.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  37,
+                      "title":  "Pegar notas em Petros e subir ao portal.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  38,
+                      "title":  "Caso a nota tenha sido emitida erroneamente, contatar o gerente em grupo do Chat e pedir para emitirem uma nova nota.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  39,
+                      "title":  "Colocar nota pendente em planilha de controle de notas erradas.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  40,
+                      "title":  "AGENDAR CONTAS A PAGAR",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  41,
+                      "title":  "Verificar sempre DDA e mandar no grupo do Posto boletos que vencem dentro de 7 dias e não tem cadastro para pagamento.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  42,
+                      "title":  "Configurar solicitações já criadas (colocar conta para pagamento, configurar pix, boleto ou tributo)",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  43,
+                      "title":  "CONFERENCIA DE FATURAMENTO.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  44,
+                      "title":  "Após confirmar todos os caixas, aguardar o relatório de \"título a receber\"",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  45,
+                      "title":  "Confirmar se todas as faturas do dia subiram para o BRAPOIO.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  46,
+                      "title":  "Confirmar se todas as faturas do dia foram enviadas para pelo menos 1 E-mail do cadastro.",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  47,
+                      "title":  "FATURAMENTO DE CARTÕES (cartões vencidos)",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  48,
+                      "title":  "Abrir tela de faturamento de cartões em sistema Petros e filtrar o Período de 1 ano em cartões vencidos",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  49,
+                      "title":  "Verificar os motivos dos cartões estarem em aberto (nota em atraso e pagamento não conciliado costumam ser o motivo)",
+                      "subtasks":  [
+
+                                   ]
+                  },
+                  {
+                      "number":  50,
+                      "title":  "Após conferencia, se continuar vencido, contatar adquirente para confirmar previsão de pagamento e alertar superiores.",
+                      "subtasks":  [
+
+                                   ]
+                  }
+              ]
+}

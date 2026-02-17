@@ -145,10 +145,10 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
     const getStatusColor = (status: TaskStatus) => {
         switch (status) {
             case TaskStatus.DONE: return 'bg-cyan-500';
-            case TaskStatus.IN_PROGRESS: return 'bg-blue-500';
-            case TaskStatus.REVIEW: return 'bg-amber-500';
+            case TaskStatus.IN_PROGRESS: return 'bg-green-600';
+            case TaskStatus.REVIEW: return 'bg-yellow-400';
             case TaskStatus.ARCHIVED: return 'bg-slate-500';
-            default: return 'bg-slate-400';
+            default: return 'bg-blue-600'; // PENDING
         }
     };
 
@@ -157,14 +157,14 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
             <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
                 <div className="flex items-center justify-between mb-8">
                     <div className="flex items-center gap-4">
-                        <div className="bg-indigo-100 dark:bg-indigo-900/30 p-3 rounded-xl">
-                            <CalendarIcon className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
+                        <div className="bg-blue-50 dark:bg-blue-900/30 p-3 rounded-2xl shadow-inner">
+                            <CalendarIcon className="w-6 h-6 text-[var(--primary-blue)]" />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 uppercase tracking-tighter">
-                                {getSafeMonthName(currentDate)} <span className="text-indigo-600">{currentDate.getFullYear()}</span>
+                            <h2 className="text-3xl font-black text-slate-800 dark:text-slate-100 uppercase tracking-tighter">
+                                {getSafeMonthName(currentDate)} <span className="text-[var(--primary-blue)]">{currentDate.getFullYear()}</span>
                             </h2>
-                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Visualize sua rotina e prazos</p>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Visualize sua rotina e prazos</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-700/50 p-1.5 rounded-xl border border-slate-100 dark:border-slate-600">
@@ -176,7 +176,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
                         </button>
                         <button
                             onClick={() => setCurrentDate(new Date())}
-                            className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all"
+                            className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-[var(--primary-blue)] hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all"
                         >
                             Hoje
                         </button>
@@ -211,7 +211,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
                                 className={`bg-white dark:bg-slate-800 min-h-[120px] p-2 transition-all cursor-pointer hover:bg-indigo-50/30 dark:hover:bg-indigo-900/10 group relative ${isToday ? 'ring-1 ring-inset ring-indigo-500' : ''}`}
                             >
                                 <div className="flex justify-between items-start mb-2">
-                                    <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-lg transition-colors ${isToday ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-700 dark:text-slate-300 group-hover:text-indigo-600'
+                                    <span className={`text-sm font-black w-8 h-8 flex items-center justify-center rounded-xl transition-all ${isToday ? 'bg-[var(--primary-blue)] text-white shadow-lg shadow-blue-500/30' : 'text-slate-700 dark:text-slate-300 group-hover:text-[var(--primary-blue)] group-hover:scale-110'
                                         }`}>
                                         {date.getDate()}
                                     </span>
@@ -258,7 +258,7 @@ export const AgendaView: React.FC<AgendaViewProps> = ({ tasks, collaborators, co
                                                 onAddClick?.(dateStr, 'nova');
                                             }}
                                             title="Tarefa"
-                                            className="p-1 px-1.5 bg-indigo-600 text-white rounded-lg shadow-lg hover:scale-110 transition-transform flex items-center gap-1"
+                                            className="p-1 px-1.5 bg-[var(--primary-blue)] text-white rounded-lg shadow-lg hover:scale-110 transition-transform flex items-center gap-1"
                                         >
                                             <PlusCircle className="w-3 h-3" />
                                         </button>

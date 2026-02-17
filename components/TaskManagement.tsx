@@ -140,7 +140,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
               <input
                 type="text"
                 placeholder="Buscar tarefas..."
-                className="pl-9 pr-4 py-2 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none w-64"
+                className="premium-input pl-9 pr-4 py-2 w-64"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -150,7 +150,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
                 <select
-                  className="pl-9 pr-8 py-2 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg text-sm appearance-none focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer min-w-[160px]"
+                  className="premium-input pl-9 pr-8 py-2 cursor-pointer min-w-[160px] appearance-none"
                   value={filterCompany}
                   onChange={(e) => setFilterCompany(e.target.value)}
                 >
@@ -163,9 +163,9 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
             )}
 
             <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4 z-10" />
               <select
-                className="pl-9 pr-8 py-2 border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg text-sm appearance-none focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer min-w-[160px]"
+                className="premium-input pl-9 pr-8 py-2 cursor-pointer min-w-[160px] appearance-none"
                 value={filterAssignee}
                 onChange={(e) => setFilterAssignee(e.target.value)}
               >
@@ -187,7 +187,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
               </button>
               <button
                 onClick={onOpenCreateModal}
-                className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20 active:scale-95"
+                className="btn-premium"
               >
                 <PlusCircle className="w-5 h-5" /> Nova Tarefa
               </button>
@@ -251,7 +251,7 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
                           draggable
                           onDragStart={(e) => handleDragStart(e, task.id)}
                           onClick={() => onViewTask?.(task)}
-                          className="bg-white dark:bg-slate-700 rounded-xl shadow-md border border-slate-100 dark:border-slate-600 p-4 cursor-grab active:cursor-grabbing group hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-500/50 transition-all duration-200 relative overflow-hidden"
+                          className="bg-white dark:bg-slate-700/80 rounded-xl shadow-md border border-slate-100 dark:border-slate-600 p-4 cursor-grab active:cursor-grabbing group hover:shadow-2xl hover:shadow-[var(--primary-blue)]/10 hover:border-[var(--primary-blue)]/30 transition-all duration-300 relative overflow-hidden glass-card"
                         >
                           {/* Status Border Tab */}
                           <div className={`absolute top-0 left-0 w-2 h-full ${column.borderColor}`}></div>
@@ -402,34 +402,36 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
       />
 
       {/* Image Preview Modal */}
-      {previewUrl && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in"
-          onClick={() => setPreviewUrl(null)}
-        >
+      {
+        previewUrl && (
           <div
-            className="relative max-w-5xl w-full max-h-[90vh] bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col"
-            onClick={e => e.stopPropagation()}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in"
+            onClick={() => setPreviewUrl(null)}
           >
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white dark:bg-slate-800">
-              <h3 className="font-bold text-slate-800 dark:text-slate-100">Visualização do Anexo</h3>
-              <button
-                onClick={() => setPreviewUrl(null)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="flex-1 overflow-auto p-2 bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
-              <img
-                src={previewUrl}
-                alt="Preview"
-                className="max-w-full max-h-full object-contain shadow-sm rounded-lg"
-              />
+            <div
+              className="relative max-w-5xl w-full max-h-[90vh] bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-white dark:bg-slate-800">
+                <h3 className="font-bold text-slate-800 dark:text-slate-100">Visualização do Anexo</h3>
+                <button
+                  onClick={() => setPreviewUrl(null)}
+                  className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto p-2 bg-slate-50 dark:bg-slate-900 flex items-center justify-center">
+                <img
+                  src={previewUrl}
+                  alt="Preview"
+                  className="max-w-full max-h-full object-contain shadow-sm rounded-lg"
+                />
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };

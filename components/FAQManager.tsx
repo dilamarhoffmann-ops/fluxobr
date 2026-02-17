@@ -313,7 +313,7 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
           {!isAdding && !editingId && (
             <button
               onClick={() => setIsAdding(true)}
-              className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-500/20 active:scale-95"
+              className="btn-premium"
             >
               <Plus className="w-5 h-5" /> Adicionar Pergunta
             </button>
@@ -329,7 +329,7 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
         <input
           type="text"
           placeholder="Busque por termos, comandos ou soluções..."
-          className="w-full pl-14 pr-12 py-5 bg-white border border-slate-200 rounded-2xl shadow-sm focus:ring-8 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all outline-none text-slate-700 placeholder:text-slate-400 font-bold text-lg"
+          className="w-full pl-14 pr-12 py-5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm focus:ring-8 focus:ring-[var(--primary-blue)]/5 focus:border-[var(--primary-blue)] transition-all outline-none text-slate-700 dark:text-slate-200 placeholder:text-slate-400 font-bold text-lg"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />

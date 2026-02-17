@@ -23,6 +23,8 @@ export interface Collaborator {
   isManager?: boolean;
   accessLevel?: string; // 'colaborador', 'gestor', 'admin'
   mustChangePassword?: boolean;
+  allowed?: boolean;
+  area?: string;
 }
 
 export interface Company {
@@ -78,6 +80,7 @@ export interface DashboardMetrics {
   completedTasks: number;
   archivedTasks: number;
   overdueTasks: number;
+  blockedTasks: number;
   completionRate: number;
 }
 

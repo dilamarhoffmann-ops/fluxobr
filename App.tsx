@@ -138,7 +138,9 @@ const App: React.FC = () => {
     role: data.role || 'Membro',
     isManager: data.is_manager,
     accessLevel: data.access_level || 'colaborador',
-    mustChangePassword: data.must_change_password
+    mustChangePassword: data.must_change_password,
+    allowed: data.allowed !== undefined ? data.allowed : true, // Default true if not exists yet
+    area: data.area || ''
   });
 
   const mapFAQFromDB = (data: any): FAQItem => ({
@@ -367,9 +369,10 @@ const App: React.FC = () => {
     const completedTasks = targetTasks.filter(t => t.status === TaskStatus.DONE).length;
     const archivedTasks = targetTasks.filter(t => t.status === TaskStatus.ARCHIVED).length;
     const overdueTasks = targetTasks.filter((t: Task) => t.status !== TaskStatus.DONE && new Date(t.dueDate) < new Date()).length;
+    const blockedTasks = 0; // Not explicitly tracked yet, but required by interface
     const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
-    return { totalTasks, completedTasks, archivedTasks, overdueTasks, completionRate };
+    return { totalTasks, completedTasks, archivedTasks, overdueTasks, blockedTasks, completionRate };
   }, [filteredTasks]);
 
   const handleAddLog = async (action: string, entityType: string, entityId?: string, entityName?: string, details?: any) => {
@@ -886,10 +889,17 @@ const App: React.FC = () => {
     }
   };
 
-  const handleEditCollaborator = async (id: string, name: string, role: string, isManager: boolean, accessLevel?: string) => {
-    const { error } = await db.update('profiles', id, { full_name: name, role, is_manager: isManager, access_level: accessLevel });
+  const handleEditCollaborator = async (id: string, name: string, role: string, isManager: boolean, accessLevel?: string, allowed?: boolean, area?: string) => {
+    const { error } = await db.update('profiles', id, {
+      full_name: name,
+      role,
+      is_manager: isManager,
+      access_level: accessLevel,
+      allowed,
+      area
+    });
     if (!error) {
-      setCollaborators(prev => prev.map(c => c.id === id ? { ...c, name, role, isManager, accessLevel } : c));
+      setCollaborators(prev => prev.map(c => c.id === id ? { ...c, name, role, isManager, accessLevel, allowed, area } : c));
       handleAddLog('editou perfil de', 'colaborador', id, name);
     } else {
       console.error('Error updating profile:', error);
@@ -1199,6 +1209,35 @@ const App: React.FC = () => {
   if (authLoading) return <div className="h-screen w-screen flex items-center justify-center bg-slate-900"><div className="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full"></div></div>;
   if (!authUser) return <SupabaseLogin />;
 
+  // Se o usuário está logado mas ainda não permitimos o acesso (allowed: false)
+  if (currentUserProfile && currentUserProfile.allowed === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0f18] p-6">
+        <div className="glass-card max-w-md w-full p-10 text-center space-y-6 border border-amber-500/20">
+          <div className="w-20 h-20 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-4 scale-animation">
+            <Bell className="w-10 h-10 text-amber-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-white font-heading">Acesso em Análise</h2>
+          <p className="text-slate-400 leading-relaxed">
+            Olá, <span className="text-white font-semibold">{currentUserProfile.name}</span>!
+            Sua solicitação de cadastro foi recebida com sucesso.
+          </p>
+          <div className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl">
+            <p className="text-sm text-amber-400">
+              Por segurança, um <strong>Gestor</strong> precisa aprovar seu acesso antes que você possa visualizar o dashboard.
+            </p>
+          </div>
+          <button
+            onClick={() => signOut()}
+            className="w-full py-3 text-slate-400 hover:text-white transition-colors"
+          >
+            Voltar para o Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const currentUser = currentUserProfile || {
     id: authUser?.id || '',
     name: authUser?.email || 'Usuário',
@@ -1209,23 +1248,23 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex font-sans transition-colors">
-      <aside className={`fixed inset-y-0 left-0 z-50 ${isMenuCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 lg:static ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} transition-all duration-300 ease-in-out`}>
+    <div className="min-h-screen bg-[var(--bg-main)] dark:bg-slate-950 flex font-sans transition-all duration-500">
+      <aside className={`fixed inset-y-0 left-0 z-50 ${isMenuCollapsed ? 'w-20' : 'w-64'} bg-[var(--sidebar-bg)] border-r border-white/5 lg:static ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} transition-all duration-300 ease-in-out shadow-2xl shadow-black/50`}>
         <div className="h-full flex flex-col">
           <div className={`p-8 pb-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 ${isMenuCollapsed ? 'p-4 pt-8' : ''}`}>
             {isMenuCollapsed ? (
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <div className="w-10 h-10 bg-[var(--primary-blue)] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
                 <span className="text-white font-black text-xl">F</span>
               </div>
             ) : (
-              <img src="/logo.png" alt="FluxoBR Logo" className="w-32 h-32 object-contain" />
+              <img src="/logo.png" alt="FluxoBR Logo" className="w-36 h-36 object-contain drop-shadow-2xl" />
             )}
           </div>
           <nav className="flex-1 px-2 py-6">
             <MenuVertical
               activeHref={activeTab}
               onItemClick={(href) => { setActiveTab(href as Tab); setIsMobileMenuOpen(false); }}
-              color="#3b82f6"
+              color="var(--primary-blue)"
               isCollapsed={isMenuCollapsed}
               menuItems={[
                 { label: 'Dashboard', href: Tab.DASHBOARD, icon: <LayoutDashboard className="w-5 h-5" /> },
@@ -1241,21 +1280,21 @@ const App: React.FC = () => {
             <div className="mt-4 px-4">
               <button
                 onClick={() => signOut()}
-                className={`flex items-center ${isMenuCollapsed ? 'justify-center w-full' : 'gap-3 px-4'} py-3 text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-all duration-300 group/logout`}
+                className={`flex items-center ${isMenuCollapsed ? 'justify-center w-full' : 'gap-3 px-4'} py-3 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 group/logout`}
                 title="Sair do Sistema"
               >
-                <LogOut className={`w-5 h-5 transition-colors group-hover/logout:text-red-500`} />
-                {!isMenuCollapsed && <span className="font-bold text-sm uppercase tracking-wider">Sair</span>}
+                <LogOut className={`w-5 h-5 transition-colors group-hover/logout:text-red-400`} />
+                {!isMenuCollapsed && <span className="font-bold text-sm uppercase tracking-widest">Sair</span>}
               </button>
             </div>
           </nav>
 
-          <div className={`p-4 mt-auto border-t border-slate-100 dark:border-slate-700/50`}>
+          <div className={`p-4 mt-auto border-t border-white/5`}>
             {!isMenuCollapsed && (
-              <div className={`bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-600 transition-all`}>
+              <div className={`bg-white/5 rounded-xl p-4 border border-white/10 transition-all hover:bg-white/10`}>
                 <div className="flex items-center gap-3">
-                  <div className={`w-2.5 h-2.5 rounded-full ${currentUser.accessLevel === 'admin' ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-400'}`}></div>
-                  <span className={`text-[10px] uppercase tracking-wider font-extrabold ${currentUser.accessLevel === 'admin' ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                  <div className={`w-2.5 h-2.5 rounded-full ${currentUser.accessLevel === 'admin' ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-500'}`}></div>
+                  <span className={`text-[10px] uppercase tracking-wider font-extrabold ${currentUser.accessLevel === 'admin' ? 'text-emerald-400' : 'text-slate-400'}`}>
                     {currentUser.accessLevel === 'admin' ? 'Administrador' : currentUser.accessLevel === 'gestor' ? 'Gestor' : 'Colaborador'}
                   </span>
                 </div>
@@ -1263,15 +1302,15 @@ const App: React.FC = () => {
             )}
             {isMenuCollapsed && (
               <div className="flex justify-center">
-                <div className={`w-2.5 h-2.5 rounded-full ${currentUser.accessLevel === 'admin' ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-400'}`}></div>
+                <div className={`w-2.5 h-2.5 rounded-full ${currentUser.accessLevel === 'admin' ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-slate-500'}`}></div>
               </div>
             )}
           </div>
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[#f8fafc] dark:bg-slate-900">
-        <header className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 px-8 py-5 flex items-center justify-between">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden bg-[var(--bg-main)] dark:bg-slate-950">
+        <header className="glass-card sticky top-0 z-30 px-8 py-5 flex items-center justify-between border-x-0 border-t-0 rounded-none shadow-sm">
           <div className="flex items-center gap-4">
             <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="lg:hidden text-slate-500 dark:text-slate-400"><Menu className="w-6 h-6" /></button>
             <button

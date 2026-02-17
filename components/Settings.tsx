@@ -10,9 +10,9 @@ import { SettingsTab } from './SettingsTab';
 interface SettingsProps {
   isManager: boolean;
   collaborators: Collaborator[];
-  onAddCollaborator: (name: string, role: string, isManager: boolean, email: string, accessLevel: string) => void;
+  onAddCollaborator: (name: string, role: string, isManager: boolean, email: string, accessLevel: string, allowed?: boolean, area?: string) => void;
   onDeleteCollaborator: (id: string) => void;
-  onEditCollaborator: (id: string, name: string, role: string, isManager: boolean, accessLevel: string) => void;
+  onEditCollaborator: (id: string, name: string, role: string, isManager: boolean, accessLevel: string, allowed?: boolean, area?: string) => void;
   teams: string[];
   onAddTeam: (teamName: string) => void;
   onDeleteTeam: (teamName: string) => void;
@@ -54,6 +54,8 @@ export const Settings: React.FC<SettingsProps> = (props) => {
   const [newCollabRole, setNewCollabRole] = useState('');
   const [newCollabEmail, setNewCollabEmail] = useState('');
   const [newCollabAccessLevel, setNewCollabAccessLevel] = useState('colaborador');
+  const [newCollabAllowed, setNewCollabAllowed] = useState(true);
+  const [newCollabArea, setNewCollabArea] = useState('');
   const [editingCollabId, setEditingCollabId] = useState<string | null>(null);
   const [newCollabPassword, setNewCollabPassword] = useState('');
 
@@ -69,6 +71,7 @@ export const Settings: React.FC<SettingsProps> = (props) => {
   const resetForm = () => {
     setNewCollabName(''); setNewCollabRole(''); setNewCollabEmail('');
     setNewCollabAccessLevel('colaborador'); setNewCollabPassword('');
+    setNewCollabAllowed(true); setNewCollabArea('');
     setEditingCollabId(null);
   };
 
@@ -77,10 +80,10 @@ export const Settings: React.FC<SettingsProps> = (props) => {
     if (newCollabName && newCollabRole) {
       const isManagerFlag = newCollabAccessLevel === 'gestor' || newCollabAccessLevel === 'admin';
       if (editingCollabId && editingCollabId !== 'new') {
-        onEditCollaborator(editingCollabId, newCollabName, newCollabRole, isManagerFlag, newCollabAccessLevel);
+        onEditCollaborator(editingCollabId, newCollabName, newCollabRole, isManagerFlag, newCollabAccessLevel, newCollabAllowed, newCollabArea);
       } else {
         if (!newCollabEmail) { alert("O e-mail é obrigatório."); return; }
-        onAddCollaborator(newCollabName, newCollabRole, isManagerFlag, newCollabEmail, newCollabAccessLevel);
+        onAddCollaborator(newCollabName, newCollabRole, isManagerFlag, newCollabEmail, newCollabAccessLevel, newCollabAllowed, newCollabArea);
       }
       if (editingCollabId === currentUser.id && newCollabPassword) { onUpdatePassword(newCollabPassword); }
       resetForm();
@@ -183,7 +186,7 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">Gestão de Colaboradores</h3>
                 <button
                   onClick={() => setEditingCollabId('new')}
-                  className="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-indigo-100 dark:shadow-none"
+                  className="btn-premium"
                 >
                   <Plus className="w-4 h-4" /> Novo Membro
                 </button>
@@ -221,11 +224,22 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                         <option value="admin">Administrador</option>
                       </select>
                     </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Área / Departamento</label>
+                      <input type="text" className="w-full text-sm px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 dark:text-white" value={newCollabArea} onChange={e => setNewCollabArea(e.target.value)} placeholder="Ex: Financeiro" />
+                    </div>
+                    <div className="flex items-center gap-3 pt-4">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" className="sr-only peer" checked={newCollabAllowed} onChange={e => setNewCollabAllowed(e.target.checked)} />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                        <span className="ml-3 text-sm font-bold text-slate-500 dark:text-slate-400">Acesso Liberado</span>
+                      </label>
+                    </div>
                     <div className="md:col-span-2 flex justify-end gap-3 mt-2">
                       {editingCollabId !== 'new' && editingCollabId !== currentUser.id && (
                         <button type="button" onClick={() => onAdminResetPassword(editingCollabId!)} className="px-4 py-2 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-[10px] font-bold rounded-xl hover:bg-amber-200 border border-amber-200 dark:border-amber-800">Resetar Senha para "123mudar"</button>
                       )}
-                      <button type="submit" className="px-8 py-2 bg-slate-900 dark:bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-slate-800 dark:hover:bg-indigo-500 transition-transform active:scale-95 shadow-lg shadow-slate-200 dark:shadow-none">Salvar Dados</button>
+                      <button type="submit" className="btn-premium px-8">Salvar Dados</button>
                     </div>
                   </form>
                 </div>
@@ -251,6 +265,8 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                         setNewCollabName(collab.name);
                         setNewCollabRole(collab.role);
                         setNewCollabAccessLevel(collab.accessLevel || 'colaborador');
+                        setNewCollabAllowed(collab.allowed !== false);
+                        setNewCollabArea(collab.area || '');
                       }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
                       {currentUser.accessLevel === 'admin' && collab.id !== currentUser.id && (
                         <button onClick={() => onDeleteCollaborator(collab.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
@@ -489,7 +505,7 @@ export const Settings: React.FC<SettingsProps> = (props) => {
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };

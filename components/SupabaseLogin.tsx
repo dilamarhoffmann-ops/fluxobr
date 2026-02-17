@@ -15,189 +15,202 @@ export const SupabaseLogin: React.FC<SupabaseLoginProps> = ({ onLoginSuccess }) 
     const [isSignUp, setIsSignUp] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setSuccess('');
+        setIsProcessing(true);
 
-        if (!email || !password) {
+        const normalizedEmail = email.trim().toLowerCase();
+
+        if (!normalizedEmail || !password) {
             setError('Por favor, preencha todos os campos obrigatórios');
+            setIsProcessing(false);
             return;
         }
 
         if (password.length < 6) {
             setError('A senha deve ter pelo menos 6 caracteres');
+            setIsProcessing(false);
             return;
         }
 
         try {
             if (isSignUp) {
-                const { error: signUpError } = await signUp(email, password, {
+                // Durante o registro, novos usuários são marcados com allowed: false por padrão (via trigger ou manual)
+                // Aqui passamos os metadados para o trigger do Supabase
+                const { error: signUpError } = await signUp(normalizedEmail, password, {
                     full_name: fullName,
+                    role: 'Colaborador', // Default role
+                    allowed: false      // Needs manual approval
                 });
 
                 if (signUpError) {
                     setError(signUpError.message);
                 } else {
-                    setSuccess('Conta criada com sucesso! Verifique seu email para confirmar.');
+                    setSuccess('Solicitação enviada! Um gestor precisa aprovar seu acesso.');
                     setEmail('');
                     setPassword('');
                     setFullName('');
+                    // Não chamamos onLoginSuccess aqui pois o usuário ainda não está 'allowed'
+                    // O App.tsx lidará com a tela de "Acesso em Análise"
                 }
             } else {
-                const { error: signInError } = await signIn(email, password);
+                const { error: signInError } = await signIn(normalizedEmail, password);
 
                 if (signInError) {
-                    setError('Email ou senha incorretos');
+                    if (signInError.message.includes('Invalid login credentials')) {
+                        setError('E-mail ou senha incorretos.');
+                    } else {
+                        setError(signInError.message);
+                    }
                 } else {
-                    setSuccess('Login realizado com sucesso!');
+                    // Sucesso no login - App.tsx verificará o perfil e a flag 'allowed'
                     onLoginSuccess?.();
                 }
             }
         } catch (err: any) {
-            let message = err.message || 'Ocorreu um erro. Tente novamente.';
-            if (message.includes('User already registered')) {
-                message = 'Este e-mail já está cadastrado.';
-            } else if (message.includes('Invalid login credentials')) {
-                message = 'Credenciais inválidas. Verifique seu e-mail e senha.';
-            }
-            setError(message);
+            setError(err.message || 'Ocorreu um erro inesperado.');
+        } finally {
+            setIsProcessing(false);
         }
-    };
-
-    const handleSignOut = async () => {
-        await signOut();
-        setSuccess('Logout realizado com sucesso!');
     };
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-cyan-500">
-                <div className="bg-white p-8 rounded-2xl shadow-2xl">
-                    <div className="flex items-center space-x-3">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                        <span className="text-slate-700 font-medium">Carregando...</span>
-                    </div>
+            <div className="min-h-screen flex items-center justify-center bg-[#021024]">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5483B3]"></div>
+                    <span className="text-slate-400 font-medium animate-pulse">Autenticando...</span>
                 </div>
             </div>
         );
     }
 
-    // Se o usuário já estiver logado (user existe), este componente não deveria estar visível
-    // ou deveria redirecionar. O App.tsx controla isso.
-    // Se por acaso renderizar e user existir, não mostramos nada para não causar flash.
-    if (user) {
-        return null;
-    }
+    if (user) return null;
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-cyan-500 p-6">
-            <div className="bg-white p-10 rounded-2xl shadow-2xl max-w-md w-full">
-                <div className="text-center mb-8">
-                    <div className="flex justify-center mb-6">
-                        <img src="/logo.png" alt="FluxoBR Logo" className="w-32 h-32 object-contain" />
+        <div className="min-h-screen flex items-center justify-center bg-[#021024] relative overflow-hidden p-6">
+            {/* Background Decorativo Dinâmico */}
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#5483B3]/10 rounded-full blur-[120px] animate-pulse"></div>
+            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#052659]/30 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '1s' }}></div>
+
+            <div className="glass-card p-10 rounded-2xl max-w-md w-full relative z-10 animate-slide-up border-white/5 shadow-premium">
+                <div className="text-center mb-10">
+                    <div className="flex justify-center mb-6 group">
+                        <div className="w-24 h-24 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-2xl">
+                            <img src="/logo.png" alt="Gestor GN Logo" className="w-16 h-16 object-contain drop-shadow-lg" />
+                        </div>
                     </div>
-                    <h2 className="text-3xl font-bold text-slate-800 mb-2">
-                        {isSignUp ? 'Criar Conta' : 'Login'}
+                    <h2 className="text-3xl font-black text-white mb-2 font-heading tracking-tight">
+                        {isSignUp ? 'Solicitar Acesso' : 'Bem-vindo'}
                     </h2>
-                    <p className="text-slate-600">
+                    <p className="text-slate-400 font-medium lowercase tracking-wide">
                         {isSignUp
-                            ? 'Preencha os dados para criar sua conta'
-                            : 'Entre com suas credenciais'}
+                            ? 'Cadastre-se para análise do gestor'
+                            : 'Gerenciamento inteligente squads'}
                     </p>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                            {error}
-                        </div>
-                    )}
-
-                    {success && (
-                        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg text-sm">
-                            {success}
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {(error || success) && (
+                        <div
+                            className={`p-4 rounded-xl text-sm font-medium animate-fade-in border ${error
+                                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                                    : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                }`}
+                        >
+                            {error || success}
                         </div>
                     )}
 
                     {isSignUp && (
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
                                 Nome Completo
                             </label>
                             <input
                                 type="text"
                                 value={fullName}
                                 onChange={(e) => setFullName(e.target.value)}
-                                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                                placeholder="Seu nome completo"
+                                className="premium-input bg-white/5 border-white/10 text-white placeholder:text-slate-600"
+                                placeholder="Como devemos te chamar?"
+                                disabled={isProcessing}
                             />
                         </div>
                     )}
 
-                    <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
-                            Email
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
+                            E-mail Corporativo
                         </label>
                         <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all"
-                            placeholder="seu@email.com"
+                            className="premium-input bg-white/5 border-white/10 text-white placeholder:text-slate-600"
+                            placeholder="seu@trabalho.com"
                             required
+                            disabled={isProcessing}
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
                             Senha
                         </label>
-                        <div className="relative">
+                        <div className="relative group">
                             <input
                                 type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all pr-12"
+                                className="premium-input bg-white/5 border-white/10 text-white placeholder:text-slate-600 pr-12"
                                 placeholder="••••••••"
                                 required
                                 minLength={6}
+                                disabled={isProcessing}
                             />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors p-1"
                             >
                                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                             </button>
                         </div>
-                        {isSignUp && (
-                            <p className="text-xs text-slate-500 mt-1">Mínimo de 6 caracteres</p>
-                        )}
                     </div>
 
                     <button
                         type="submit"
-                        disabled={loading}
-                        className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white py-3 rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isProcessing}
+                        className="w-full btn-premium py-4 transition-all active:scale-95 disabled:opacity-50 disabled:translate-y-0"
                     >
-                        {loading ? 'Processando...' : isSignUp ? 'Criar Conta' : 'Entrar'}
+                        {isProcessing ? (
+                            <div className="flex items-center gap-2">
+                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                                <span>Processando...</span>
+                            </div>
+                        ) : (
+                            <span>{isSignUp ? 'Enviar Solicitação' : 'Entrar no Sistema'}</span>
+                        )}
                     </button>
                 </form>
 
-                <div className="mt-6 text-center">
+                <div className="mt-8 text-center pt-6 border-t border-white/5">
                     <button
                         onClick={() => {
                             setIsSignUp(!isSignUp);
                             setError('');
                             setSuccess('');
                         }}
-                        className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+                        className="text-slate-400 hover:text-[#5483B3] font-bold text-xs uppercase tracking-widest transition-colors"
+                        disabled={isProcessing}
                     >
                         {isSignUp
-                            ? 'Já tem uma conta? Faça login'
-                            : 'Não tem conta? Cadastre-se'}
+                            ? 'Já possui acesso? Voltar ao login'
+                            : 'Não possui conta? Solicitar cadastro'}
                     </button>
                 </div>
             </div>

@@ -86,10 +86,10 @@ export const CompanyList: React.FC<CompanyListProps> = ({
 
       {/* Left Sidebar: List of Companies */}
       <div className="w-full lg:w-1/3 xl:w-1/4 flex flex-col gap-4">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden flex flex-col h-full">
-          <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-            <h3 className="font-bold text-slate-800 flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-indigo-600" />
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden flex flex-col h-full hover:shadow-xl transition-all duration-500">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+            <h3 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-[var(--primary-blue)]" />
               Empresas
             </h3>
             {isManager && (
@@ -154,9 +154,9 @@ export const CompanyList: React.FC<CompanyListProps> = ({
                 <div
                   key={company.id}
                   onClick={() => setSelectedCompanyId(company.id)}
-                  className={`group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all border ${selectedCompanyId === company.id
-                    ? 'bg-indigo-50 border-indigo-200 shadow-sm'
-                    : 'hover:bg-slate-50 border-transparent hover:border-slate-100'
+                  className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${selectedCompanyId === company.id
+                    ? 'bg-[var(--primary-blue)] border-[var(--primary-blue)] shadow-lg shadow-blue-500/20'
+                    : 'hover:bg-slate-50 dark:hover:bg-slate-700 border-transparent hover:border-slate-100 dark:hover:border-slate-600'
                     }`}
                 >
                   <div className="flex items-center gap-3 overflow-hidden">
@@ -164,10 +164,10 @@ export const CompanyList: React.FC<CompanyListProps> = ({
                       <span className="font-bold text-xs">{company.name.substring(0, 2).toUpperCase()}</span>
                     </div>
                     <div className="min-w-0">
-                      <p className={`text-sm font-semibold truncate ${selectedCompanyId === company.id ? 'text-indigo-900' : 'text-slate-700'}`}>
+                      <p className={`text-sm font-black truncate ${selectedCompanyId === company.id ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>
                         {company.name}
                       </p>
-                      <p className="text-xs text-slate-500 flex items-center gap-1 truncate">
+                      <p className={`text-[10px] flex items-center gap-1 truncate uppercase tracking-wider font-bold ${selectedCompanyId === company.id ? 'text-white/60' : 'text-slate-400 dark:text-slate-500'}`}>
                         <Users className="w-3 h-3" /> {company.team.join(', ')}
                       </p>
                     </div>
@@ -178,12 +178,12 @@ export const CompanyList: React.FC<CompanyListProps> = ({
                       <button
                         type="button"
                         onClick={(e) => handleDelete(company.id, e)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors mr-1"
+                        className={`p-1.5 rounded transition-colors mr-1 ${selectedCompanyId === company.id ? 'text-white/40 hover:text-white hover:bg-white/10' : 'text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10'}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}
-                    {selectedCompanyId === company.id && <ChevronRight className="w-4 h-4 text-indigo-400" />}
+                    {selectedCompanyId === company.id && <ChevronRight className="w-4 h-4 text-white/40" />}
                   </div>
                 </div>
               ))
@@ -197,10 +197,11 @@ export const CompanyList: React.FC<CompanyListProps> = ({
         {selectedCompany ? (
           <div className="flex flex-col h-full gap-4">
             {/* Header Area */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
-              <div className="flex items-center gap-4">
-                <div className={`w-16 h-16 rounded-xl ${selectedCompany.logo} flex items-center justify-center text-white shadow-md`}>
-                  <Building2 className="w-8 h-8" />
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--primary-blue)] opacity-[0.02] rounded-full blur-3xl -mr-32 -mt-32 transition-all group-hover:opacity-[0.05]"></div>
+              <div className="flex items-center gap-6 relative z-10">
+                <div className={`w-20 h-20 rounded-2xl ${selectedCompany.logo} flex items-center justify-center text-white shadow-xl transform transition-transform group-hover:scale-105 group-hover:rotate-2`}>
+                  <Building2 className="w-10 h-10" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
@@ -212,7 +213,7 @@ export const CompanyList: React.FC<CompanyListProps> = ({
                           setEditingTeamsList(selectedCompany.team);
                           setIsEditingCompany(!isEditingCompany);
                         }}
-                        className={`flex items-center gap-2 px-3 py-1.5 text-xs font-bold uppercase tracking-widest rounded-lg shadow-lg transition-all hover:scale-105 ${isEditingCompany ? 'bg-slate-800 text-white' : 'bg-indigo-600 text-white shadow-indigo-500/20 hover:bg-indigo-700'}`}
+                        className="btn-premium py-2 px-4 text-xs"
                         title="Editar Empresa"
                       >
                         <Edit className="w-3.5 h-3.5" />

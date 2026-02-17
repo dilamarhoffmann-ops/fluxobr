@@ -8,55 +8,59 @@
 /* Root Variables for Light Theme */
 :root {
   --color-bg-primary: 248 250 252;
-  /* slate-50 */
   --color-bg-secondary: 255 255 255;
-  /* white */
   --color-bg-tertiary: 241 245 249;
-  /* slate-100 */
 
   --color-text-primary: 15 23 42;
-  /* slate-900 */
   --color-text-secondary: 51 65 85;
-  /* slate-700 */
   --color-text-tertiary: 100 116 139;
-  /* slate-500 */
 
   --color-border-primary: 226 232 240;
-  /* slate-200 */
   --color-border-secondary: 241 245 249;
-  /* slate-100 */
 
   --color-accent: 59 130 246;
-  /* blue-500 */
   --color-accent-hover: 37 99 235;
-  /* blue-600 */
+
+  /* design_apoio Tokens */
+  --deep-navy: #021024;
+  --deep-blue: #052659;
+  --primary-blue: #5483B3;
+  --light-blue: #7DA0CA;
+  --ice-blue: #C1E8FF;
+  --accent-orange: #f59e0b;
+
+  /* Semantic mappings */
+  --primary-hover: #3e6d9d;
+  --bg-main: #f0f7ff;
+  --sidebar-bg: var(--deep-navy);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.2);
+
+  /* Brand Shadows */
+  --shadow-premium: 0 25px 50px -12px rgba(2, 16, 36, 0.25);
+  --shadow-soft: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
 /* Dark Theme Variables */
 .dark {
   --color-bg-primary: 15 23 42;
-  /* slate-900 */
   --color-bg-secondary: 30 41 59;
-  /* slate-800 */
   --color-bg-tertiary: 51 65 85;
-  /* slate-700 */
 
   --color-text-primary: 248 250 252;
-  /* slate-50 */
   --color-text-secondary: 226 232 240;
-  /* slate-200 */
   --color-text-tertiary: 148 163 184;
-  /* slate-400 */
 
   --color-border-primary: 51 65 85;
-  /* slate-700 */
   --color-border-secondary: 71 85 105;
-  /* slate-600 */
 
   --color-accent: 59 130 246;
-  /* blue-500 */
   --color-accent-hover: 96 165 250;
-  /* blue-400 */
+
+  /* Overwrite for dark mode in design_apoio */
+  --glass-bg: rgba(2, 16, 36, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --bg-main: #021024;
 }
 
 * {
@@ -141,6 +145,107 @@ a,
   letter-spacing: -0.025em;
 }
 
+/* design_apoio Utility Classes */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-soft);
+}
+
+.premium-input {
+  width: 100%;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  font-weight: 500;
+}
+
+.dark .premium-input {
+  background-color: #1e293b;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+.premium-input:focus {
+  background-color: white;
+  border-color: var(--primary-blue);
+  box-shadow: 0 0 0 4px rgba(84, 131, 179, 0.1);
+  transform: translateY(-1px);
+}
+
+.dark .premium-input:focus {
+  background-color: #0f172a;
+}
+
+.btn-premium {
+  background: var(--primary-blue);
+  color: white;
+  font-weight: 700;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-premium:hover {
+  background: var(--deep-blue);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -5px rgba(5, 38, 89, 0.3);
+}
+
+.btn-premium:active {
+  transform: translateY(0);
+}
+
+/* Animations */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Table Design */
+.premium-table thead th {
+  background: #f1f5f9;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  padding: 1rem 1.5rem;
+}
+
+.dark .premium-table thead th {
+  background: #1e293b;
+  color: #94a3b8;
+}
+
+.premium-table tbody td {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.dark .premium-table tbody td {
+  border-bottom-color: #334155;
+}
+
 /* Focus styles */
 :focus-visible {
   outline: 2px solid rgb(var(--color-accent));
@@ -149,22 +254,20 @@ a,
 
 /* Custom Textarea Resizer */
 textarea::-webkit-resizer {
-  background-image: linear-gradient(135deg, 
-    transparent 0%, 
-    transparent 50%, 
-    rgb(var(--color-accent)) 50%, 
-    rgb(var(--color-accent)) 100%
-  );
+  background-image: linear-gradient(135deg,
+      transparent 0%,
+      transparent 50%,
+      rgb(var(--color-accent)) 50%,
+      rgb(var(--color-accent)) 100%);
   background-size: 8px 8px;
   background-repeat: no-repeat;
   background-position: bottom right;
 }
 
 .dark textarea::-webkit-resizer {
-  background-image: linear-gradient(135deg, 
-    transparent 0%, 
-    transparent 50%, 
-    rgb(var(--color-accent-hover)) 50%, 
-    rgb(var(--color-accent-hover)) 100%
-  );
+  background-image: linear-gradient(135deg,
+      transparent 0%,
+      transparent 50%,
+      rgb(var(--color-accent-hover)) 50%,
+      rgb(var(--color-accent-hover)) 100%);
 }

@@ -1,0 +1,59 @@
+================================================================================
+CONTE«sDO DO ARQUIVO: taredas squad.docx
+================================================================================
+
+AGENDAR BOLETOS DE COMBUSTIVEIS 
+Entrar em portais diariamente e verificar se quantidade de boletos no DDA bate com quantidade de boletos em portal
+Pegar documentos no portal da companhia (nota e boleto) e anexar no DDA.
+Preencher dados como N¯ da nota, setor e forma de pagamento e gerar pagamento
+IMPORTAR RETORNO
+Baixar arquivo e importar para sistema Petros.
+DEPOSITO DE CHEQUES 
+Gerar relat¢rio em sistema e encaminhar ao posto.
+Aguardar arquivo de cheques e autorizar deposito.
+Conferir comprovante do banco.
+LMC
+Gerar medidas em sistema
+Preencher de acordo com a fita enviada diariamente pelo posto.
+Confirmar LMC.
+CONCILIAÄ«O DE CARTÂES
+Conciliar vendas do dia anterior com forma de recebimento.
+CONCILIAÄ«O DE SANGRIA/COFRE
+Conferir em tela de sangria se todas os suprimentos e sangria as batendo.
+Conferir se saldo de cofre em sistema est† batendo com planilha enviada diariamente pelo posto.
+Ap¢s conferencia, conciliar valores.
+CONFERENCIA DE CAIXA
+ Conferir documentos anexados em sistema Brapoio.
+Conferir dados do caixa no sistema Petros com mapa de caixa anexado em Brapoio
+Ratear faltas em sobras em sistema Petros.
+Confirmar o caixa.
+CONCILIAÄ«O BANCµRIA 
+Importar extratos em formato OFX de todas as contas para sistema Petros.
+Liquidar contas a receber
+Lanáar despesas pagas
+Dar entrada em notas fiscais.
+Lanáar tarifas e dÇbitos em contas/investimentos.
+Conciliar toda a conta.
+D2 (Conferencia de cart‰es frota em portais)
+Entrar em faturamento de cart‰es e filtrar por data do dia anterior
+Conferir todos os portais e verificar se todas as vendas/saques est∆o lanáadas no valor correto e na adquirente correta.
+ANEXAR NOTAS DE SAIDA EM PORTAIS
+Entrar em todos os portais diariamente e verificar se existem pedidos de notas em aberto.
+Pegar notas em Petros e subir ao portal.
+Caso a nota tenha sido emitida erroneamente, contatar o gerente em grupo do Chat e pedir para emitirem uma nova nota.
+Colocar nota pendente em planilha de controle de notas erradas.
+AGENDAR CONTAS A PAGAR
+Verificar sempre DDA e mandar no grupo do Posto boletos que vencem dentro de 7 dias e n∆o tem cadastro para pagamento.
+Configurar solicitaá‰es j† criadas (colocar conta para pagamento, configurar pix, boleto ou tributo)
+CONFERENCIA DE FATURAMENTO.
+Ap¢s confirmar todos os caixas, aguardar o relat¢rio de "t°tulo a receber"
+Confirmar se todas as faturas do dia subiram para o BRAPOIO.
+Confirmar se todas as faturas do dia foram enviadas para pelo menos 1 E-mail do cadastro.
+FATURAMENTO DE CARTÂES (cart‰es vencidos) 
+Abrir tela de faturamento de cart‰es em sistema Petros e filtrar o Per°odo de 1 ano em cart‰es vencidos
+Verificar os motivos dos cart‰es estarem em aberto (nota em atraso e pagamento n∆o conciliado costumam ser o motivo)
+Ap¢s conferencia, se continuar vencido, contatar adquirente para confirmar previs∆o de pagamento e alertar superiores.
+
+================================================================================
+FIM DO ARQUIVO
+================================================================================
