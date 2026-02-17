@@ -35,9 +35,9 @@ jobs:
       # Supabase Sync (Applied if supabase folder exists)
       - name: Sync Supabase Database
         if: hashFiles('supabase/migrations/*.sql') != ''
-        uses: supabase/setup-cli@v1.1.0
+        uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 1.145.4
 
       - name: Link and Push Migrations
         if: hashFiles('supabase/migrations/*.sql') != ''
