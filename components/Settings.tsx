@@ -247,13 +247,23 @@ export const Settings: React.FC<SettingsProps> = (props) => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {collaborators.map(collab => (
-                  <div key={collab.id} className="group p-4 bg-white dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/50 rounded-2xl flex items-center justify-between hover:border-indigo-200 dark:hover:border-indigo-700 hover:shadow-lg hover:shadow-slate-100 dark:hover:shadow-none transition-all">
+                  <div key={collab.id} className={`group p-4 bg-white dark:bg-slate-800/40 border ${collab.allowed === false ? 'border-amber-200 bg-amber-50/10 dark:border-amber-900/30' : 'border-slate-100 dark:border-slate-700/50'} rounded-2xl flex items-center justify-between hover:border-indigo-200 dark:hover:border-indigo-700 hover:shadow-lg hover:shadow-slate-100 dark:hover:shadow-none transition-all`}>
                     <div className="flex items-center gap-4">
-                      <Avatar name={collab.name} src={collab.avatar} size="md" />
+                      <div className="relative">
+                        <Avatar name={collab.name} src={collab.avatar} size="md" />
+                        <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white dark:border-slate-800 ${collab.allowed === false ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
+                      </div>
                       <div>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">{collab.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">{collab.name}</p>
+                          {collab.allowed === false && (
+                            <span className="text-[9px] font-black bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded uppercase tracking-wider">Acesso em Análise</span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase">{collab.role}</span>
+                          <div className="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">{collab.area || 'Sem área'}</span>
                           <div className="w-1 h-1 bg-slate-300 dark:bg-slate-600 rounded-full" />
                           {getLevelBadge(collab.accessLevel)}
                         </div>
@@ -267,9 +277,18 @@ export const Settings: React.FC<SettingsProps> = (props) => {
                         setNewCollabAccessLevel(collab.accessLevel || 'colaborador');
                         setNewCollabAllowed(collab.allowed !== false);
                         setNewCollabArea(collab.area || '');
-                      }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
+                      }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors" title="Editar Perfil"><Edit2 className="w-4 h-4" /></button>
+
                       {currentUser.accessLevel === 'admin' && collab.id !== currentUser.id && (
-                        <button onClick={() => onDeleteCollaborator(collab.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                        <button onClick={() => {
+                          if (confirm(`Tem certeza que deseja resetar a senha de ${collab.name}? O usuário terá que definir uma nova senha no próximo acesso.`)) {
+                            onAdminResetPassword(collab.id);
+                          }
+                        }} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/30 rounded-lg transition-colors" title="Resetar Segurança"><Lock className="w-4 h-4" /></button>
+                      )}
+
+                      {currentUser.accessLevel === 'admin' && collab.id !== currentUser.id && (
+                        <button onClick={() => onDeleteCollaborator(collab.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" title="Remover Membro"><Trash2 className="w-4 h-4" /></button>
                       )}
                     </div>
                   </div>
