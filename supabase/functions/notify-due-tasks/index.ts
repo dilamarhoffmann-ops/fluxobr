@@ -5,6 +5,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+const CRON_SECRET = Deno.env.get('CRON_SECRET')
 
 // Helper function to log notifications to database
 async function logNotification(
@@ -62,26 +63,17 @@ async function sendEmail(emailContent: any): Promise<{ success: boolean, id?: st
 }
 
 Deno.serve(async (req) => {
-    // Configuração do cliente Supabase com Service Role para ignorar RLS
-    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
-    const url = new URL(req.url)
-    const testEmail = url.searchParams.get('email')
-
-    // Test mode: send a test email
-    if (testEmail) {
-        console.log(`Disparando e-mail de teste para: ${testEmail}`)
-        const emailContent = {
-            from: 'FluxoBR <onboarding@resend.dev>',
-            to: testEmail,
-            subject: '🧪 Teste de Integração FluxoBR',
-            html: `<h1>Conexão Bem-Sucedida!</h1><p>Este é um e-mail de teste disparado manualmente para validar a integração entre o Supabase e o Resend.</p>`,
-        }
-
-        const result = await sendEmail(emailContent)
-        return new Response(JSON.stringify({ success: result.success, result }), {
+    // ✅ SECURITY: Verificar token de autorização antes de qualquer operação
+    const authHeader = req.headers.get('Authorization')
+    if (!CRON_SECRET || authHeader !== `Bearer ${CRON_SECRET}`) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
             headers: { 'Content-Type': 'application/json' },
         })
     }
+
+    // Configuração do cliente Supabase com Service Role para ignorar RLS
+    const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
 
     try {
         // 1. Buscar tarefas que precisam ser notificadas
@@ -271,8 +263,9 @@ Deno.serve(async (req) => {
         })
 
     } catch (err) {
+        // ✅ SECURITY: Logar internamente, nunca expor stack trace ao cliente
         console.error('Error in notify-due-tasks function:', err)
-        return new Response(JSON.stringify({ error: err.message, stack: err.stack }), {
+        return new Response(JSON.stringify({ error: 'Internal server error' }), {
             status: 500,
             headers: { 'Content-Type': 'application/json' },
         })

@@ -670,17 +670,14 @@ const App: React.FC = () => {
 
       const { data, error } = await db.insert('tasks', tasksToAdd);
 
-      console.log('Resultado da inserção:', { data, error, tasksToAdd });
-
       if (error) {
-        console.error('Erro detalhado ao criar tarefas:', error);
-        alert(`Erro ao criar tarefas: ${error.message || 'Erro desconhecido'}. Verifique o console para mais detalhes.`);
+        console.error('Erro ao criar tarefas:', error);
+        alert('Erro ao criar tarefas. Tente novamente ou contate o administrador.');
         return;
       }
 
       if (!error && data) {
         const newTasks = data.map(mapTaskFromDB);
-        console.log('Tarefas criadas com sucesso:', newTasks);
         setTasks(prev => [...newTasks, ...prev]);
         newTasks.forEach(nt => handleAddLog('criou', 'tarefa', nt.id, nt.title));
       }
@@ -1166,8 +1163,8 @@ const App: React.FC = () => {
         alert(`Erro ao redefinir senha: ${error.message}`);
       }
     } else {
-      // Optimistically update the local state if possible, though strict sync comes from DB
-      alert('Senha do usuário redefinida com sucesso para "123mudar". O usuário será solicitado a alterar a senha no próximo login.');
+      // ✅ SECURITY: Não revelar a senha padrão — usuário receberá email de redefinição
+      alert('Senha do usuário redefinida com sucesso. O usuário será solicitado a alterar a senha no próximo login.');
     }
   };
 

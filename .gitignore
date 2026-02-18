@@ -25,3 +25,10 @@ dist-ssr
 
 .vercel
 .env*.local
+
+# ✅ SECURITY: Arquivos de dados sensíveis — não commitar
+*.docx
+conteudo_*.txt
+tarefas_*.json
+tarefas_processadas.json
+tarefas_extraidas.json
