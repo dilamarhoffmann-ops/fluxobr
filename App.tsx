@@ -1254,10 +1254,10 @@ const App: React.FC = () => {
           <div className={`p-8 pb-4 flex flex-col items-center justify-center gap-2 transition-all duration-300 ${isMenuCollapsed ? 'p-4 pt-8' : ''}`}>
             {isMenuCollapsed ? (
               <div className="w-10 h-10 bg-[var(--primary-blue)] rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <span className="text-white font-black text-xl">F</span>
+                <span className="text-white font-black text-xl">C</span>
               </div>
             ) : (
-              <img src="/logo.png" alt="FluxoBR Logo" className="w-36 h-36 object-contain drop-shadow-2xl" />
+              <img src="/logo.svg" alt="Checklist Apoio Logo" className="w-36 h-36 object-contain drop-shadow-2xl" />
             )}
           </div>
           <nav className="flex-1 px-2 py-6">

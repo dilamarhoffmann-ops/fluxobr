@@ -101,7 +101,7 @@ export const SupabaseLogin: React.FC<SupabaseLoginProps> = ({ onLoginSuccess }) 
                 <div className="text-center mb-10">
                     <div className="flex justify-center mb-6 group">
                         <div className="w-24 h-24 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-2xl">
-                            <img src="/logo.png" alt="Gestor GN Logo" className="w-16 h-16 object-contain drop-shadow-lg" />
+                            <img src="/logo.svg" alt="Checklist Apoio Logo" className="w-16 h-16 object-contain drop-shadow-lg" />
                         </div>
                     </div>
                     <h2 className="text-3xl font-black text-white mb-2 font-heading tracking-tight">
@@ -118,8 +118,8 @@ export const SupabaseLogin: React.FC<SupabaseLoginProps> = ({ onLoginSuccess }) 
                     {(error || success) && (
                         <div
                             className={`p-4 rounded-xl text-sm font-medium animate-fade-in border ${error
-                                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
-                                    : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                                : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
                                 }`}
                         >
                             {error || success}
