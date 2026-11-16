@@ -3,6 +3,7 @@ import { Task, Company, Collaborator } from '../types';
 import { X, Check, CheckCircle2, CheckSquare, Building2, User, Calendar, Clock, MessageSquare, Save, Paperclip, FileText, Loader2, ExternalLink, Image as ImageIcon, ArrowRightLeft, History, Lock, Shield, Plus } from 'lucide-react';
 import { storage, db } from '../lib/supabase';
 import { Avatar } from './ui/Avatar';
+import { isImageFile } from '../lib/faqUtils';
 
 interface TaskDetailsModalProps {
     isOpen: boolean;
@@ -61,18 +62,6 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 
     if (!isOpen || !task) return null;
 
-    const isImageFile = (url: string | undefined | null) => {
-        if (!url) return false;
-        const cleanUrl = url.trim().split(/[?#]/)[0].toLowerCase();
-        return cleanUrl.endsWith('.jpg') ||
-            cleanUrl.endsWith('.jpeg') ||
-            cleanUrl.endsWith('.png') ||
-            cleanUrl.endsWith('.webp') ||
-            cleanUrl.endsWith('.gif') ||
-            cleanUrl.endsWith('.svg') ||
-            cleanUrl.endsWith('.avif') ||
-            cleanUrl.endsWith('.bmp');
-    };
 
     const completedCount = task.checklist?.filter(item => item.completed).length || 0;
     const totalCount = task.checklist?.length || 0;

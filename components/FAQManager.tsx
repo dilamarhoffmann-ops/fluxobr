@@ -235,10 +235,25 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
     exportContainer.className = 'faq-export-container';
 
     const header = document.createElement('div');
-    header.innerHTML = `
-      <h1 style="color: #1e1b4b; font-size: 32px; font-weight: 800; margin-bottom: 8px; font-family: sans-serif;">Base de Conhecimento</h1>
-      <p style="color: #64748b; font-size: 14px; margin-bottom: 30px; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; font-family: sans-serif;">FluxoBR - Gerado em ${new Date().toLocaleDateString('pt-BR')}</p>
-    `;
+    const h1 = document.createElement('h1');
+    h1.style.color = '#1e1b4b';
+    h1.style.fontSize = '32px';
+    h1.style.fontWeight = '800';
+    h1.style.marginBottom = '8px';
+    h1.style.fontFamily = 'sans-serif';
+    h1.textContent = 'Base de Conhecimento';
+
+    const p = document.createElement('p');
+    p.style.color = '#64748b';
+    p.style.fontSize = '14px';
+    p.style.marginBottom = '30px';
+    p.style.borderBottom = '2px solid #f1f5f9';
+    p.style.paddingBottom = '15px';
+    p.style.fontFamily = 'sans-serif';
+    p.textContent = `FluxoBR - Gerado em ${new Date().toLocaleDateString('pt-BR')}`;
+
+    header.appendChild(h1);
+    header.appendChild(p);
     exportContainer.appendChild(header);
 
     faqs.forEach((faq, index) => {
@@ -247,15 +262,47 @@ export const FAQManager: React.FC<FAQManagerProps> = ({ faqs, onAdd, onUpdate, o
       itemDiv.style.pageBreakInside = 'avoid';
       itemDiv.style.fontFamily = 'sans-serif';
 
-      itemDiv.innerHTML = `
-        <h3 style="color: #4338ca; font-size: 18px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: flex-start; gap: 10px;">
-          <span style="background: #eef2ff; color: #4338ca; width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0;">${index + 1}</span>
-          ${faq.question}
-        </h3>
-        <div style="color: #334155; font-size: 14px; line-height: 1.7; padding-left: 34px; white-space: pre-wrap;">
-          ${faq.answer.replace(/!\[.*?\]\(.*?\)/g, '[Imagem Anexada]').replace(/#+\s/g, '').replace(/\*\*(.*?)\*\*/g, '$1')}
-        </div>
-      `;
+      const h3 = document.createElement('h3');
+      h3.style.color = '#4338ca';
+      h3.style.fontSize = '18px';
+      h3.style.fontWeight = '700';
+      h3.style.marginBottom = '12px';
+      h3.style.display = 'flex';
+      h3.style.alignItems = 'flex-start';
+      h3.style.gap = '10px';
+
+      const badge = document.createElement('span');
+      badge.style.background = '#eef2ff';
+      badge.style.color = '#4338ca';
+      badge.style.width = '24px';
+      badge.style.height = '24px';
+      badge.style.borderRadius = '6px';
+      badge.style.display = 'flex';
+      badge.style.alignItems = 'center';
+      badge.style.justifyContent = 'center';
+      badge.style.fontSize = '12px';
+      badge.style.flexShrink = '0';
+      badge.textContent = `${index + 1}`;
+
+      const questionText = document.createElement('span');
+      questionText.textContent = faq.question;
+
+      h3.appendChild(badge);
+      h3.appendChild(questionText);
+
+      const answerDiv = document.createElement('div');
+      answerDiv.style.color = '#334155';
+      answerDiv.style.fontSize = '14px';
+      answerDiv.style.lineHeight = '1.7';
+      answerDiv.style.paddingLeft = '34px';
+      answerDiv.style.whiteSpace = 'pre-wrap';
+      answerDiv.textContent = faq.answer
+        .replace(/!\[.*?\]\(.*?\)/g, '[Imagem Anexada]')
+        .replace(/#+\s/g, '')
+        .replace(/\*\*(.*?)\*\*/g, '$1');
+
+      itemDiv.appendChild(h3);
+      itemDiv.appendChild(answerDiv);
       exportContainer.appendChild(itemDiv);
     });
 

@@ -149,6 +149,7 @@ const App: React.FC = () => {
     answer: data.answer,
     url: data.url,
     pdfUrl: data.pdf_url,
+    imageUrl: data.image_url,
     creatorId: data.created_by
   });
 
@@ -1006,6 +1007,7 @@ const App: React.FC = () => {
       answer: faq.answer,
       url: faq.url,
       pdf_url: faq.pdfUrl,
+      image_url: faq.imageUrl,
       created_by: authUser?.id
     });
     if (!error && data) setFaqs(prev => [...prev, mapFAQFromDB(data[0])]);
@@ -1016,7 +1018,8 @@ const App: React.FC = () => {
       question: updatedFaq.question,
       answer: updatedFaq.answer,
       url: updatedFaq.url,
-      pdf_url: updatedFaq.pdfUrl
+      pdf_url: updatedFaq.pdfUrl,
+      image_url: updatedFaq.imageUrl
     });
     if (!error) setFaqs(prev => prev.map(f => f.id === id ? { ...f, ...updatedFaq } : f));
   };

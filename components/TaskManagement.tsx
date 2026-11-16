@@ -6,6 +6,7 @@ import { FAQViewModal } from './FAQViewModal';
 import { ReportModal } from './ReportModal';
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 import { Avatar } from './ui/Avatar';
+import { isImageFile } from '../lib/faqUtils';
 
 interface TaskManagementProps {
   tasks: Task[];
@@ -45,18 +46,6 @@ export const TaskManagement: React.FC<TaskManagementProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
-  const isImageFile = (url: string | undefined | null) => {
-    if (!url) return false;
-    const cleanUrl = url.trim().split(/[?#]/)[0].toLowerCase();
-    return cleanUrl.endsWith('.jpg') ||
-      cleanUrl.endsWith('.jpeg') ||
-      cleanUrl.endsWith('.png') ||
-      cleanUrl.endsWith('.webp') ||
-      cleanUrl.endsWith('.gif') ||
-      cleanUrl.endsWith('.svg') ||
-      cleanUrl.endsWith('.avif') ||
-      cleanUrl.endsWith('.bmp');
-  };
 
   const filteredTasks = tasks.filter(task => {
     const matchesAssignee = filterAssignee === 'all' || task.assigneeId === filterAssignee;

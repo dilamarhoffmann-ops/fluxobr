@@ -46,33 +46,40 @@ export const FAQMarkdown: React.FC<FAQMarkdownProps> = ({ content, onPreviewImag
                         <a {...props} target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:text-indigo-800 font-medium underline underline-offset-4 decoration-indigo-200 hover:decoration-indigo-800 transition-all" />
                     ),
                     p: ({ node, children, ...props }) => {
-                        const content = React.Children.toArray(children).join('');
-                        const hasQA = /(:?^|\s)(Q:|P:|A:|R:)/.test(content);
+                        // Check if ANY child is a string that contains a QA prefix
+                        const childrenArray = React.Children.toArray(children);
+                        const hasQA = childrenArray.some(child =>
+                            typeof child === 'string' && /(:?^|\s)(Q:|P:|A:|R:)/.test(child)
+                        );
 
                         if (hasQA) {
-                            const parts = content.split(/(Q:|P:|A:|R:)/);
                             return (
                                 <p {...props} className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-                                    {parts.map((part, i) => {
-                                        let displayPart = part;
-                                        let className = '';
+                                    {childrenArray.map((child, i) => {
+                                        if (typeof child !== 'string') return child;
 
-                                        if (part === 'Q:' || part === 'P:') {
-                                            displayPart = 'P:';
-                                            className = 'font-black text-indigo-600 italic mr-1';
-                                        } else if (part === 'A:' || part === 'R:') {
-                                            displayPart = 'R:';
-                                            className = 'font-black text-emerald-600 italic mr-1 mt-3 inline-block';
-                                        }
+                                        const parts = child.split(/(Q:|P:|A:|R:)/);
+                                        return parts.map((part, j) => {
+                                            let displayPart = part;
+                                            let className = '';
 
-                                        return (
-                                            <React.Fragment key={i}>
-                                                {(part === 'A:' || part === 'R:') && <br />}
-                                                <span className={className}>
-                                                    {displayPart}
-                                                </span>
-                                            </React.Fragment>
-                                        );
+                                            if (part === 'Q:' || part === 'P:') {
+                                                displayPart = 'P:';
+                                                className = 'font-black text-indigo-600 italic mr-1';
+                                            } else if (part === 'A:' || part === 'R:') {
+                                                displayPart = 'R:';
+                                                className = 'font-black text-emerald-600 italic mr-1 mt-3 inline-block';
+                                            }
+
+                                            return (
+                                                <React.Fragment key={`${i}-${j}`}>
+                                                    {(part === 'A:' || part === 'R:') && i > 0 && <br />}
+                                                    <span className={className}>
+                                                        {displayPart}
+                                                    </span>
+                                                </React.Fragment>
+                                            );
+                                        });
                                     })}
                                 </p>
                             );

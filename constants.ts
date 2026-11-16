@@ -1,7 +1,6 @@
 
 import { Collaborator, Task, TaskPriority, TaskStatus, Company, FAQItem } from './types';
 
-export const ADMIN_PASSWORD = 'admin';
 
 export const COLLABORATORS: Collaborator[] = [
   { id: 'admin', name: 'Administrador do Sistema', role: 'Super User', avatar: 'https://picsum.photos/100/100?random=100', isManager: true },
